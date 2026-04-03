@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, migrationsRan } from "@/lib/db";
 import { leagues, leagueMembers, users, brackets, picks } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -11,6 +11,7 @@ type Params = Promise<{ code: string }>;
 
 export default async function LeaguePage({ params }: { params: Params }) {
   const { code } = await params;
+  await migrationsRan;
 
   const league = await db
     .select()
