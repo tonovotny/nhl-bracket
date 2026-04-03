@@ -36,6 +36,7 @@ export default async function LeaguePage({ params }: { params: Params }) {
     .all();
 
   let userPicks: Record<string, number> = {};
+  let userGames: Record<string, number> = {};
   let bracketSubmitted = false;
   if (currentUser) {
     const bracket = await db
@@ -49,6 +50,9 @@ export default async function LeaguePage({ params }: { params: Params }) {
       const bracketPicks = await db.select().from(picks).where(eq(picks.bracketId, bracket.id)).all();
       for (const p of bracketPicks) {
         userPicks[p.slotId] = p.predictedWinnerTeamId;
+        if (p.predictedGames) {
+          userGames[p.slotId] = p.predictedGames;
+        }
       }
     }
   }
@@ -66,6 +70,7 @@ export default async function LeaguePage({ params }: { params: Params }) {
       currentUser={currentUser ? { id: currentUser.id, name: currentUser.name } : null}
       members={members}
       userPicks={userPicks}
+      userGames={userGames}
       bracketSubmitted={bracketSubmitted}
       leaderboard={leaderboard}
       isLocked={isLocked}

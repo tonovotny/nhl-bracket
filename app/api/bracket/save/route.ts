@@ -6,9 +6,10 @@ import { eq, and } from "drizzle-orm";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { inviteCode, picksData } = body as {
+  const { inviteCode, picksData, gamesData } = body as {
     inviteCode: string;
     picksData: Record<string, number>;
+    gamesData?: Record<string, number>;
   };
 
   if (!inviteCode || !picksData) {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       bracketId: bracket.id,
       slotId,
       predictedWinnerTeamId: teamId,
+      predictedGames: gamesData?.[slotId] ?? null,
     }).run();
   }
 

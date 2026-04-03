@@ -62,7 +62,8 @@ async function main() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       bracket_id INTEGER NOT NULL REFERENCES brackets(id),
       slot_id TEXT NOT NULL,
-      predicted_winner_team_id INTEGER NOT NULL REFERENCES teams(id)
+      predicted_winner_team_id INTEGER NOT NULL REFERENCES teams(id),
+      predicted_games INTEGER
     );
   `);
 
