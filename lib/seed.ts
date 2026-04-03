@@ -1,6 +1,3 @@
-// 2026 NHL Playoff teams (projected as of April 2, 2026)
-// Update these when the field is officially confirmed (~April 12)
-
 export type TeamSeed = {
   id: number;
   name: string;
@@ -9,51 +6,34 @@ export type TeamSeed = {
   conference: string;
 };
 
-// Western Conference
-export const westernTeams: TeamSeed[] = [
-  { id: 1, name: "Winnipeg Jets", abbreviation: "WPG", seed: 1, conference: "W" },
-  { id: 2, name: "Dallas Stars", abbreviation: "DAL", seed: 2, conference: "W" },
-  { id: 3, name: "Vegas Golden Knights", abbreviation: "VGK", seed: 3, conference: "W" },
-  { id: 4, name: "Edmonton Oilers", abbreviation: "EDM", seed: 4, conference: "W" },
-  { id: 5, name: "Minnesota Wild", abbreviation: "MIN", seed: 5, conference: "W" },
-  { id: 6, name: "Los Angeles Kings", abbreviation: "LAK", seed: 6, conference: "W" },
-  { id: 7, name: "Colorado Avalanche", abbreviation: "COL", seed: 7, conference: "W" },
-  { id: 8, name: "Vancouver Canucks", abbreviation: "VAN", seed: 8, conference: "W" },
-];
+// Build Round 1 matchups from teams: 1v8, 2v7, 3v6, 4v5 per conference
+export function buildRound1Matchups(teams: TeamSeed[]) {
+  const western = teams.filter((t) => t.conference === "W").sort((a, b) => a.seed - b.seed);
+  const eastern = teams.filter((t) => t.conference === "E").sort((a, b) => a.seed - b.seed);
 
-// Eastern Conference
-export const easternTeams: TeamSeed[] = [
-  { id: 9, name: "Washington Capitals", abbreviation: "WSH", seed: 1, conference: "E" },
-  { id: 10, name: "Toronto Maple Leafs", abbreviation: "TOR", seed: 2, conference: "E" },
-  { id: 11, name: "Florida Panthers", abbreviation: "FLA", seed: 3, conference: "E" },
-  { id: 12, name: "Carolina Hurricanes", abbreviation: "CAR", seed: 4, conference: "E" },
-  { id: 13, name: "New Jersey Devils", abbreviation: "NJD", seed: 5, conference: "E" },
-  { id: 14, name: "Tampa Bay Lightning", abbreviation: "TBL", seed: 6, conference: "E" },
-  { id: 15, name: "Ottawa Senators", abbreviation: "OTT", seed: 7, conference: "E" },
-  { id: 16, name: "Montreal Canadiens", abbreviation: "MTL", seed: 8, conference: "E" },
-];
+  return [
+    { slotId: "W_R1_1", home: western[0]?.id, away: western[7]?.id },
+    { slotId: "W_R1_2", home: western[1]?.id, away: western[6]?.id },
+    { slotId: "W_R1_3", home: western[2]?.id, away: western[5]?.id },
+    { slotId: "W_R1_4", home: western[3]?.id, away: western[4]?.id },
+    { slotId: "E_R1_1", home: eastern[0]?.id, away: eastern[7]?.id },
+    { slotId: "E_R1_2", home: eastern[1]?.id, away: eastern[6]?.id },
+    { slotId: "E_R1_3", home: eastern[2]?.id, away: eastern[5]?.id },
+    { slotId: "E_R1_4", home: eastern[3]?.id, away: eastern[4]?.id },
+  ];
+}
 
-export const allTeams = [...westernTeams, ...easternTeams];
-
-// Round 1 matchups: 1v8, 2v7, 3v6, 4v5 in each conference
-export const round1Matchups = [
-  // Western
-  { slotId: "W_R1_1", home: 1, away: 8 }, // WPG vs VAN
-  { slotId: "W_R1_2", home: 2, away: 7 }, // DAL vs COL
-  { slotId: "W_R1_3", home: 3, away: 6 }, // VGK vs LAK
-  { slotId: "W_R1_4", home: 4, away: 5 }, // EDM vs MIN
-  // Eastern
-  { slotId: "E_R1_1", home: 9, away: 16 }, // WSH vs MTL
-  { slotId: "E_R1_2", home: 10, away: 15 }, // TOR vs OTT
-  { slotId: "E_R1_3", home: 11, away: 14 }, // FLA vs TBL
-  { slotId: "E_R1_4", home: 12, away: 13 }, // CAR vs NJD
-];
-
-// All series slots
+// All series slots (static structure, doesn't depend on teams)
 export const allSlots = [
-  // Round 1
-  ...round1Matchups.map((m) => ({ slotId: m.slotId, round: 1 })),
-  // Round 2 (reseeded: highest vs lowest remaining seed)
+  { slotId: "W_R1_1", round: 1 },
+  { slotId: "W_R1_2", round: 1 },
+  { slotId: "W_R1_3", round: 1 },
+  { slotId: "W_R1_4", round: 1 },
+  { slotId: "E_R1_1", round: 1 },
+  { slotId: "E_R1_2", round: 1 },
+  { slotId: "E_R1_3", round: 1 },
+  { slotId: "E_R1_4", round: 1 },
+  // Round 2 (reseeded)
   { slotId: "W_R2_1", round: 2 },
   { slotId: "W_R2_2", round: 2 },
   { slotId: "E_R2_1", round: 2 },
@@ -64,9 +44,3 @@ export const allSlots = [
   // Stanley Cup Finals
   { slotId: "SCF", round: 4 },
 ];
-
-// Conference for each R1 slot
-export const r1Conferences: Record<string, string> = {
-  W_R1_1: "W", W_R1_2: "W", W_R1_3: "W", W_R1_4: "W",
-  E_R1_1: "E", E_R1_2: "E", E_R1_3: "E", E_R1_4: "E",
-};

@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { calculateLeaderboard } from "@/lib/scoring";
+import { fetchPlayoffTeams } from "@/lib/nhl-api";
 import LeagueClient from "./LeagueClient";
 
 type Params = Promise<{ code: string }>;
@@ -57,7 +58,10 @@ export default async function LeaguePage({ params }: { params: Params }) {
     }
   }
 
-  const leaderboard = await calculateLeaderboard(league.id);
+  const [leaderboard, teams] = await Promise.all([
+    calculateLeaderboard(league.id),
+    fetchPlayoffTeams(),
+  ]);
   const isLocked = new Date() > new Date(league.lockTime);
 
   return (
@@ -69,6 +73,7 @@ export default async function LeaguePage({ params }: { params: Params }) {
       }}
       currentUser={currentUser ? { id: currentUser.id, name: currentUser.name } : null}
       members={members}
+      teams={teams}
       userPicks={userPicks}
       userGames={userGames}
       bracketSubmitted={bracketSubmitted}

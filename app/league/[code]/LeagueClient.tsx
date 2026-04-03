@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import BracketPicker from "@/app/components/BracketPicker";
-import type { PicksMap, GamesMap } from "@/lib/bracket-data";
+import type { PicksMap, GamesMap, TeamSeed } from "@/lib/bracket-data";
 import type { LeaderboardEntry } from "@/lib/scoring";
 
 type Tab = "bracket" | "leaderboard" | "league";
@@ -11,6 +11,7 @@ export default function LeagueClient({
   league,
   currentUser,
   members,
+  teams,
   userPicks,
   userGames,
   bracketSubmitted,
@@ -20,6 +21,7 @@ export default function LeagueClient({
   league: { name: string; inviteCode: string; lockTime: string };
   currentUser: { id: number; name: string } | null;
   members: { userId: number; userName: string }[];
+  teams: TeamSeed[];
   userPicks: PicksMap;
   userGames: GamesMap;
   bracketSubmitted: boolean;
@@ -137,6 +139,7 @@ export default function LeagueClient({
       <main className="max-w-[1100px] mx-auto px-4 py-4">
         {tab === "bracket" && (
           <BracketPicker
+            teams={teams}
             initialPicks={userPicks}
             initialGames={userGames}
             locked={isLocked || submitted}
