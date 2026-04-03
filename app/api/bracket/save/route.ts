@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { db } from "@/lib/db";
+import { db, migrationsRan } from "@/lib/db";
 import { users, brackets, picks, leagues } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -11,6 +11,8 @@ export async function POST(request: Request) {
     picksData: Record<string, number>;
     gamesData?: Record<string, number>;
   };
+
+  await migrationsRan;
 
   if (!inviteCode || !picksData) {
     return NextResponse.json({ error: "Missing data" }, { status: 400 });
