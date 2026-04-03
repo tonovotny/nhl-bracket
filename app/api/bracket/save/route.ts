@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db, migrationsRan } from "@/lib/db";
-import { users, brackets, picks, leagues } from "@/lib/schema";
+import { users, brackets, picks, leagues, series } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
+import { getSlotsForRound } from "@/lib/bracket-data";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { inviteCode, picksData, gamesData } = body as {
+  const { inviteCode, picksData, gamesData, round } = body as {
     inviteCode: string;
     picksData: Record<string, number>;
     gamesData?: Record<string, number>;
+    round: number;
   };
 
   await migrationsRan;
 
-  if (!inviteCode || !picksData) {
+  if (!inviteCode || !picksData || !round) {
     return NextResponse.json({ error: "Missing data" }, { status: 400 });
   }
 
@@ -39,9 +41,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "League not found" }, { status: 404 });
   }
 
-  const lockTime = new Date(league.lockTime);
-  if (new Date() > lockTime) {
-    return NextResponse.json({ error: "Brackets are locked" }, { status: 403 });
+  // Validate round is open: all series in this round must be "pending"
+  const roundSeries = await db.select().from(series).where(eq(series.round, round)).all();
+  const allPending = roundSeries.every((s) => s.status === "pending");
+  if (!allPending) {
+    return NextResponse.json({ error: "This round is locked" }, { status: 403 });
   }
 
   let bracket = await db
@@ -58,9 +62,17 @@ export async function POST(request: Request) {
       .get();
   }
 
-  await db.delete(picks).where(eq(picks.bracketId, bracket.id)).run();
+  // Only delete and rewrite picks for this round's slots
+  const roundSlots = getSlotsForRound(round);
+  for (const slotId of roundSlots) {
+    await db.delete(picks).where(
+      and(eq(picks.bracketId, bracket.id), eq(picks.slotId, slotId))
+    ).run();
+  }
 
   for (const [slotId, teamId] of Object.entries(picksData)) {
+    // Only save picks for slots in this round
+    if (!roundSlots.includes(slotId)) continue;
     await db.insert(picks).values({
       bracketId: bracket.id,
       slotId,
@@ -69,5 +81,5 @@ export async function POST(request: Request) {
     }).run();
   }
 
-  return NextResponse.json({ saved: true, pickCount: Object.keys(picksData).length });
+  return NextResponse.json({ saved: true, round });
 }

@@ -26,7 +26,7 @@ export async function calculateLeaderboard(leagueId: number): Promise<Leaderboar
     .where(eq(brackets.leagueId, leagueId))
     .all();
 
-  const leagueBrackets = allBrackets.filter((b) => b.submittedAt !== null);
+  const leagueBrackets = allBrackets;
 
   const entries: LeaderboardEntry[] = [];
 

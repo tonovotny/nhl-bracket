@@ -3,41 +3,19 @@ import { buildRound1Matchups, allSlots, type TeamSeed } from "./seed";
 export type PicksMap = Record<string, number>; // slotId -> teamId
 export type GamesMap = Record<string, number>; // slotId -> predicted games (4-7)
 
+// Series info passed from DB to client
+export type SeriesInfo = {
+  slotId: string;
+  round: number;
+  homeTeamId: number | null;
+  awayTeamId: number | null;
+  winnerTeamId: number | null;
+  gamesPlayed: number | null;
+  status: string; // "pending" | "active" | "complete"
+};
+
 function getTeamById(teams: TeamSeed[], id: number): TeamSeed | undefined {
   return teams.find((t) => t.id === id);
-}
-
-// Get the Round 1 winners for a conference, sorted by seed (best first)
-function getR1Winners(teams: TeamSeed[], conference: string, picks: PicksMap): TeamSeed[] {
-  const matchups = buildRound1Matchups(teams);
-  const r1Slots = matchups
-    .filter((m) => m.slotId.startsWith(conference))
-    .map((m) => m.slotId);
-
-  const winners: TeamSeed[] = [];
-  for (const slot of r1Slots) {
-    const teamId = picks[slot];
-    if (teamId) {
-      const team = getTeamById(teams, teamId);
-      if (team) winners.push(team);
-    }
-  }
-
-  return winners.sort((a, b) => a.seed - b.seed);
-}
-
-// Get the Round 2 winners for a conference, sorted by seed
-function getR2Winners(teams: TeamSeed[], conference: string, picks: PicksMap): TeamSeed[] {
-  const r2Slots = [`${conference}_R2_1`, `${conference}_R2_2`];
-  const winners: TeamSeed[] = [];
-  for (const slot of r2Slots) {
-    const teamId = picks[slot];
-    if (teamId) {
-      const team = getTeamById(teams, teamId);
-      if (team) winners.push(team);
-    }
-  }
-  return winners.sort((a, b) => a.seed - b.seed);
 }
 
 // Reseed: pair highest seed vs lowest seed
@@ -55,110 +33,127 @@ function reseed(teamsList: TeamSeed[]): [TeamSeed, TeamSeed][] {
   return pairs;
 }
 
-// Get the two teams that should appear in a given slot based on reseeding
-export function getTeamsInSlot(teams: TeamSeed[], slotId: string, picks: PicksMap): [TeamSeed | null, TeamSeed | null] {
-  const matchups = buildRound1Matchups(teams);
+// Get the two teams in a slot, using actual series data when available
+export function getTeamsInSlot(
+  teams: TeamSeed[],
+  slotId: string,
+  seriesMap: Record<string, SeriesInfo>,
+): [TeamSeed | null, TeamSeed | null] {
+  // If the series has teams assigned in DB, use those
+  const s = seriesMap[slotId];
+  if (s?.homeTeamId && s?.awayTeamId) {
+    return [getTeamById(teams, s.homeTeamId) ?? null, getTeamById(teams, s.awayTeamId) ?? null];
+  }
 
-  // Round 1: teams are fixed from matchups
+  // Round 1: teams are fixed from standings
+  const matchups = buildRound1Matchups(teams);
   const r1 = matchups.find((m) => m.slotId === slotId);
   if (r1) {
     return [getTeamById(teams, r1.home) ?? null, getTeamById(teams, r1.away) ?? null];
   }
 
-  // Round 2: reseed R1 winners within the conference
+  // Round 2+: derive from actual results of previous round via reseeding
   if (slotId.includes("_R2_")) {
     const conference = slotId[0];
     const slotIndex = parseInt(slotId.slice(-1)) - 1;
-    const r1Winners = getR1Winners(teams, conference, picks);
-
+    const r1Winners = getConferenceWinners(teams, conference, 1, seriesMap);
     if (r1Winners.length < 4) return [null, null];
-
     const pairs = reseed(r1Winners);
-    if (slotIndex < pairs.length) {
-      return [pairs[slotIndex][0], pairs[slotIndex][1]];
-    }
-    return [null, null];
+    return slotIndex < pairs.length ? [pairs[slotIndex][0], pairs[slotIndex][1]] : [null, null];
   }
 
-  // Conference Finals: reseed R2 winners
   if (slotId === "W_CF" || slotId === "E_CF") {
     const conference = slotId[0];
-    const r2Winners = getR2Winners(teams, conference, picks);
-
+    const r2Winners = getConferenceWinners(teams, conference, 2, seriesMap);
     if (r2Winners.length < 2) return [null, null];
-
     const sorted = [...r2Winners].sort((a, b) => a.seed - b.seed);
     return [sorted[0], sorted[1]];
   }
 
-  // Stanley Cup Finals: W_CF winner vs E_CF winner
   if (slotId === "SCF") {
-    const wWinnerId = picks["W_CF"];
-    const eWinnerId = picks["E_CF"];
+    const wSeries = seriesMap["W_CF"];
+    const eSeries = seriesMap["E_CF"];
     return [
-      wWinnerId ? getTeamById(teams, wWinnerId) ?? null : null,
-      eWinnerId ? getTeamById(teams, eWinnerId) ?? null : null,
+      wSeries?.winnerTeamId ? getTeamById(teams, wSeries.winnerTeamId) ?? null : null,
+      eSeries?.winnerTeamId ? getTeamById(teams, eSeries.winnerTeamId) ?? null : null,
     ];
   }
 
   return [null, null];
 }
 
-// Figure out which round a slot belongs to
-function getRound(slotId: string): number {
-  if (slotId.includes("_R1_")) return 1;
-  if (slotId.includes("_R2_")) return 2;
-  if (slotId.endsWith("_CF")) return 3;
-  if (slotId === "SCF") return 4;
-  return 0;
+// Get actual winners from completed series in a round+conference
+function getConferenceWinners(
+  teams: TeamSeed[],
+  conference: string,
+  round: number,
+  seriesMap: Record<string, SeriesInfo>,
+): TeamSeed[] {
+  const winners: TeamSeed[] = [];
+  for (const s of Object.values(seriesMap)) {
+    if (s.round === round && s.slotId.startsWith(conference) && s.status === "complete" && s.winnerTeamId) {
+      const team = getTeamById(teams, s.winnerTeamId);
+      if (team) winners.push(team);
+    }
+  }
+  return winners.sort((a, b) => a.seed - b.seed);
 }
 
-// Get all slots from later rounds that might be affected by a pick change
-function getLaterRoundSlots(round: number, conference?: string): string[] {
-  return allSlots
-    .filter((s) => {
-      if (s.round <= round) return false;
-      if (s.slotId === "SCF") return true;
-      if (conference && !s.slotId.startsWith(conference) && s.slotId !== "SCF") return false;
-      return true;
-    })
-    .map((s) => s.slotId);
+// Determine which round is open for betting
+// Returns 0 if no round is open
+export function getOpenRound(seriesMap: Record<string, SeriesInfo>): number {
+  for (let round = 1; round <= 4; round++) {
+    const roundSeries = Object.values(seriesMap).filter((s) => s.round === round);
+    const allPending = roundSeries.every((s) => s.status === "pending");
+    const hasTeams = roundSeries.some((s) => s.homeTeamId && s.awayTeamId);
+
+    // Round is open if all series are pending and at least one has teams assigned
+    // (R1 always has teams from standings)
+    if (allPending && (hasTeams || round === 1)) {
+      return round;
+    }
+
+    // If any series in this round is active or there's a mix, this round is locked
+    // Check if this round is fully complete to move to next
+    const allComplete = roundSeries.every((s) => s.status === "complete");
+    if (!allComplete) return 0; // round in progress, no betting available
+  }
+  return 0; // all rounds complete
 }
 
-// Make a pick and clear any invalidated downstream picks
+// Get slot IDs for a specific round
+export function getSlotsForRound(round: number): string[] {
+  return allSlots.filter((s) => s.round === round).map((s) => s.slotId);
+}
+
+// Make a pick (only within current round, no cascading needed)
 export function makePick(
   slotId: string,
   teamId: number,
   currentPicks: PicksMap,
-  currentGames: GamesMap
+  currentGames: GamesMap,
 ): { picks: PicksMap; games: GamesMap } {
   const newPicks = { ...currentPicks };
   const newGames = { ...currentGames };
   const oldPick = newPicks[slotId];
   newPicks[slotId] = teamId;
 
-  // If pick changed, clear all later round picks in this conference
-  // because reseeding means ANY later matchup could change
+  // If winner changed, clear the games prediction for this slot
   if (oldPick !== undefined && oldPick !== teamId) {
-    const round = getRound(slotId);
-    const conference = slotId[0];
-    const toClear = getLaterRoundSlots(round, conference);
-    for (const s of toClear) {
-      delete newPicks[s];
-      delete newGames[s];
-    }
-    // Also clear the games prediction for this slot since winner changed
     delete newGames[slotId];
   }
 
   return { picks: newPicks, games: newGames };
 }
 
-export function countPicks(picks: PicksMap): number {
-  return Object.keys(picks).length;
+export function countPicksForRound(picks: PicksMap, round: number): number {
+  const roundSlots = getSlotsForRound(round);
+  return roundSlots.filter((s) => picks[s] !== undefined).length;
 }
 
-export const TOTAL_PICKS = allSlots.length; // 15
+export function totalSlotsForRound(round: number): number {
+  return getSlotsForRound(round).length;
+}
 
 export { allSlots };
 export type { TeamSeed };
