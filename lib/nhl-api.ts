@@ -2,7 +2,7 @@ import type { TeamSeed } from "./seed";
 
 type NHLStanding = {
   teamName: { default: string };
-  teamAbbrev: string;
+  teamAbbrev: { default: string };
   conferenceAbbrev: string;
   conferenceSequence: number;
   clinchIndicator?: string | null;
@@ -36,7 +36,7 @@ export async function fetchPlayoffTeams(): Promise<TeamSeed[]> {
     const entry: TeamSeed = {
       id: 0, // assigned below
       name: team.teamName.default,
-      abbreviation: team.teamAbbrev,
+      abbreviation: team.teamAbbrev.default,
       seed,
       conference: conf,
     };
