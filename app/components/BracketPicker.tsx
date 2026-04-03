@@ -8,8 +8,8 @@ import {
   TOTAL_PICKS,
   type PicksMap,
   type GamesMap,
+  type TeamSeed,
 } from "@/lib/bracket-data";
-import type { TeamSeed } from "@/lib/seed";
 
 // Team colors (approximate primary colors)
 const teamColors: Record<string, string> = {
@@ -100,6 +100,7 @@ function GamesSelector({
 
 function Matchup({
   slotId,
+  teams,
   picks,
   games,
   onPick,
@@ -107,13 +108,14 @@ function Matchup({
   locked,
 }: {
   slotId: string;
+  teams: TeamSeed[];
   picks: PicksMap;
   games: GamesMap;
   onPick: (slotId: string, teamId: number) => void;
   onGames: (slotId: string, numGames: number) => void;
   locked: boolean;
 }) {
-  const [team1, team2] = getTeamsInSlot(slotId, picks);
+  const [team1, team2] = getTeamsInSlot(teams, slotId, picks);
   const currentPick = picks[slotId];
   const hasPick = currentPick !== undefined;
 
@@ -149,6 +151,7 @@ function Matchup({
 function RoundColumn({
   label,
   slots,
+  teams,
   picks,
   games,
   onPick,
@@ -157,6 +160,7 @@ function RoundColumn({
 }: {
   label: string;
   slots: string[];
+  teams: TeamSeed[];
   picks: PicksMap;
   games: GamesMap;
   onPick: (slotId: string, teamId: number) => void;
@@ -169,18 +173,20 @@ function RoundColumn({
         {label}
       </div>
       {slots.map((slotId) => (
-        <Matchup key={slotId} slotId={slotId} picks={picks} games={games} onPick={onPick} onGames={onGames} locked={locked} />
+        <Matchup key={slotId} slotId={slotId} teams={teams} picks={picks} games={games} onPick={onPick} onGames={onGames} locked={locked} />
       ))}
     </div>
   );
 }
 
 export default function BracketPicker({
+  teams,
   initialPicks,
   initialGames,
   locked,
   onSave,
 }: {
+  teams: TeamSeed[];
   initialPicks?: PicksMap;
   initialGames?: GamesMap;
   locked?: boolean;
@@ -249,6 +255,7 @@ export default function BracketPicker({
           <RoundColumn
             label="Round 1"
             slots={["W_R1_1", "W_R1_2", "W_R1_3", "W_R1_4"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}
@@ -258,6 +265,7 @@ export default function BracketPicker({
           <RoundColumn
             label="Round 2"
             slots={["W_R2_1", "W_R2_2"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}
@@ -267,6 +275,7 @@ export default function BracketPicker({
           <RoundColumn
             label="West Final"
             slots={["W_CF"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}
@@ -280,13 +289,14 @@ export default function BracketPicker({
               Stanley Cup
             </div>
             <div className="text-3xl mb-2">🏆</div>
-            <Matchup slotId="SCF" picks={picks} games={games} onPick={handlePick} onGames={handleGames} locked={isLocked} />
+            <Matchup slotId="SCF" teams={teams} picks={picks} games={games} onPick={handlePick} onGames={handleGames} locked={isLocked} />
           </div>
 
           {/* Eastern Conference (mirrored) */}
           <RoundColumn
             label="East Final"
             slots={["E_CF"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}
@@ -296,6 +306,7 @@ export default function BracketPicker({
           <RoundColumn
             label="Round 2"
             slots={["E_R2_1", "E_R2_2"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}
@@ -305,6 +316,7 @@ export default function BracketPicker({
           <RoundColumn
             label="Round 1"
             slots={["E_R1_1", "E_R1_2", "E_R1_3", "E_R1_4"]}
+            teams={teams}
             picks={picks}
             games={games}
             onPick={handlePick}

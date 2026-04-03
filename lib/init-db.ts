@@ -1,5 +1,7 @@
 import { createClient } from "@libsql/client";
-import { allTeams, round1Matchups, allSlots } from "./seed";
+import { allSlots } from "./seed";
+import { fetchPlayoffTeams } from "./nhl-api";
+import { buildRound1Matchups } from "./seed";
 
 async function main() {
   const client = createClient({
@@ -66,6 +68,10 @@ async function main() {
       predicted_games INTEGER
     );
   `);
+
+  // Fetch current playoff teams from NHL API
+  const allTeams = await fetchPlayoffTeams();
+  const round1Matchups = buildRound1Matchups(allTeams);
 
   // Seed teams
   for (const team of allTeams) {

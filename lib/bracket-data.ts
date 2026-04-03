@@ -1,15 +1,16 @@
-import { allTeams, round1Matchups, allSlots, type TeamSeed } from "./seed";
+import { buildRound1Matchups, allSlots, type TeamSeed } from "./seed";
 
 export type PicksMap = Record<string, number>; // slotId -> teamId
 export type GamesMap = Record<string, number>; // slotId -> predicted games (4-7)
 
-export function getTeamById(id: number): TeamSeed | undefined {
-  return allTeams.find((t) => t.id === id);
+function getTeamById(teams: TeamSeed[], id: number): TeamSeed | undefined {
+  return teams.find((t) => t.id === id);
 }
 
 // Get the Round 1 winners for a conference, sorted by seed (best first)
-function getR1Winners(conference: string, picks: PicksMap): TeamSeed[] {
-  const r1Slots = round1Matchups
+function getR1Winners(teams: TeamSeed[], conference: string, picks: PicksMap): TeamSeed[] {
+  const matchups = buildRound1Matchups(teams);
+  const r1Slots = matchups
     .filter((m) => m.slotId.startsWith(conference))
     .map((m) => m.slotId);
 
@@ -17,23 +18,22 @@ function getR1Winners(conference: string, picks: PicksMap): TeamSeed[] {
   for (const slot of r1Slots) {
     const teamId = picks[slot];
     if (teamId) {
-      const team = getTeamById(teamId);
+      const team = getTeamById(teams, teamId);
       if (team) winners.push(team);
     }
   }
 
-  // Sort by seed (lowest seed number = best)
   return winners.sort((a, b) => a.seed - b.seed);
 }
 
 // Get the Round 2 winners for a conference, sorted by seed
-function getR2Winners(conference: string, picks: PicksMap): TeamSeed[] {
+function getR2Winners(teams: TeamSeed[], conference: string, picks: PicksMap): TeamSeed[] {
   const r2Slots = [`${conference}_R2_1`, `${conference}_R2_2`];
   const winners: TeamSeed[] = [];
   for (const slot of r2Slots) {
     const teamId = picks[slot];
     if (teamId) {
-      const team = getTeamById(teamId);
+      const team = getTeamById(teams, teamId);
       if (team) winners.push(team);
     }
   }
@@ -41,10 +41,9 @@ function getR2Winners(conference: string, picks: PicksMap): TeamSeed[] {
 }
 
 // Reseed: pair highest seed vs lowest seed
-// Returns array of [higher seed, lower seed] pairs
-function reseed(teams: TeamSeed[]): [TeamSeed, TeamSeed][] {
-  if (teams.length < 2) return [];
-  const sorted = [...teams].sort((a, b) => a.seed - b.seed);
+function reseed(teamsList: TeamSeed[]): [TeamSeed, TeamSeed][] {
+  if (teamsList.length < 2) return [];
+  const sorted = [...teamsList].sort((a, b) => a.seed - b.seed);
   const pairs: [TeamSeed, TeamSeed][] = [];
   let lo = 0;
   let hi = sorted.length - 1;
@@ -57,20 +56,22 @@ function reseed(teams: TeamSeed[]): [TeamSeed, TeamSeed][] {
 }
 
 // Get the two teams that should appear in a given slot based on reseeding
-export function getTeamsInSlot(slotId: string, picks: PicksMap): [TeamSeed | null, TeamSeed | null] {
+export function getTeamsInSlot(teams: TeamSeed[], slotId: string, picks: PicksMap): [TeamSeed | null, TeamSeed | null] {
+  const matchups = buildRound1Matchups(teams);
+
   // Round 1: teams are fixed from matchups
-  const r1 = round1Matchups.find((m) => m.slotId === slotId);
+  const r1 = matchups.find((m) => m.slotId === slotId);
   if (r1) {
-    return [getTeamById(r1.home) ?? null, getTeamById(r1.away) ?? null];
+    return [getTeamById(teams, r1.home) ?? null, getTeamById(teams, r1.away) ?? null];
   }
 
   // Round 2: reseed R1 winners within the conference
   if (slotId.includes("_R2_")) {
-    const conference = slotId[0]; // "W" or "E"
-    const slotIndex = parseInt(slotId.slice(-1)) - 1; // 0 or 1
-    const r1Winners = getR1Winners(conference, picks);
+    const conference = slotId[0];
+    const slotIndex = parseInt(slotId.slice(-1)) - 1;
+    const r1Winners = getR1Winners(teams, conference, picks);
 
-    if (r1Winners.length < 4) return [null, null]; // need all 4 R1 picks
+    if (r1Winners.length < 4) return [null, null];
 
     const pairs = reseed(r1Winners);
     if (slotIndex < pairs.length) {
@@ -82,7 +83,7 @@ export function getTeamsInSlot(slotId: string, picks: PicksMap): [TeamSeed | nul
   // Conference Finals: reseed R2 winners
   if (slotId === "W_CF" || slotId === "E_CF") {
     const conference = slotId[0];
-    const r2Winners = getR2Winners(conference, picks);
+    const r2Winners = getR2Winners(teams, conference, picks);
 
     if (r2Winners.length < 2) return [null, null];
 
@@ -95,8 +96,8 @@ export function getTeamsInSlot(slotId: string, picks: PicksMap): [TeamSeed | nul
     const wWinnerId = picks["W_CF"];
     const eWinnerId = picks["E_CF"];
     return [
-      wWinnerId ? getTeamById(wWinnerId) ?? null : null,
-      eWinnerId ? getTeamById(eWinnerId) ?? null : null,
+      wWinnerId ? getTeamById(teams, wWinnerId) ?? null : null,
+      eWinnerId ? getTeamById(teams, eWinnerId) ?? null : null,
     ];
   }
 
@@ -117,9 +118,7 @@ function getLaterRoundSlots(round: number, conference?: string): string[] {
   return allSlots
     .filter((s) => {
       if (s.round <= round) return false;
-      // SCF is always affected
       if (s.slotId === "SCF") return true;
-      // Conference-specific slots
       if (conference && !s.slotId.startsWith(conference) && s.slotId !== "SCF") return false;
       return true;
     })
@@ -142,7 +141,7 @@ export function makePick(
   // because reseeding means ANY later matchup could change
   if (oldPick !== undefined && oldPick !== teamId) {
     const round = getRound(slotId);
-    const conference = slotId[0]; // "W" or "E"
+    const conference = slotId[0];
     const toClear = getLaterRoundSlots(round, conference);
     for (const s of toClear) {
       delete newPicks[s];
@@ -161,4 +160,5 @@ export function countPicks(picks: PicksMap): number {
 
 export const TOTAL_PICKS = allSlots.length; // 15
 
-export { allTeams, round1Matchups, allSlots };
+export { allSlots };
+export type { TeamSeed };
