@@ -66,4 +66,5 @@ export const picks = sqliteTable("picks", {
   predictedWinnerTeamId: integer("predicted_winner_team_id")
     .notNull()
     .references(() => teams.id),
+  predictedGames: integer("predicted_games"), // 4, 5, 6, or 7
 });

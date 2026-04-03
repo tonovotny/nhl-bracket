@@ -1,6 +1,7 @@
 import { allTeams, round1Matchups, allSlots, type TeamSeed } from "./seed";
 
 export type PicksMap = Record<string, number>; // slotId -> teamId
+export type GamesMap = Record<string, number>; // slotId -> predicted games (4-7)
 
 export function getTeamById(id: number): TeamSeed | undefined {
   return allTeams.find((t) => t.id === id);
@@ -126,8 +127,14 @@ function getLaterRoundSlots(round: number, conference?: string): string[] {
 }
 
 // Make a pick and clear any invalidated downstream picks
-export function makePick(slotId: string, teamId: number, currentPicks: PicksMap): PicksMap {
+export function makePick(
+  slotId: string,
+  teamId: number,
+  currentPicks: PicksMap,
+  currentGames: GamesMap
+): { picks: PicksMap; games: GamesMap } {
   const newPicks = { ...currentPicks };
+  const newGames = { ...currentGames };
   const oldPick = newPicks[slotId];
   newPicks[slotId] = teamId;
 
@@ -139,20 +146,13 @@ export function makePick(slotId: string, teamId: number, currentPicks: PicksMap)
     const toClear = getLaterRoundSlots(round, conference);
     for (const s of toClear) {
       delete newPicks[s];
+      delete newGames[s];
     }
+    // Also clear the games prediction for this slot since winner changed
+    delete newGames[slotId];
   }
 
-  return newPicks;
-}
-
-export function getPointsForRound(round: number): number {
-  switch (round) {
-    case 1: return 1;
-    case 2: return 2;
-    case 3: return 4;
-    case 4: return 8;
-    default: return 0;
-  }
+  return { picks: newPicks, games: newGames };
 }
 
 export function countPicks(picks: PicksMap): number {

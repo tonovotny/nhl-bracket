@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import BracketPicker from "@/app/components/BracketPicker";
-import type { PicksMap } from "@/lib/bracket-data";
+import type { PicksMap, GamesMap } from "@/lib/bracket-data";
 import type { LeaderboardEntry } from "@/lib/scoring";
 
 type Tab = "bracket" | "leaderboard" | "league";
@@ -12,6 +12,7 @@ export default function LeagueClient({
   currentUser,
   members,
   userPicks,
+  userGames,
   bracketSubmitted,
   leaderboard,
   isLocked,
@@ -20,6 +21,7 @@ export default function LeagueClient({
   currentUser: { id: number; name: string } | null;
   members: { userId: number; userName: string }[];
   userPicks: PicksMap;
+  userGames: GamesMap;
   bracketSubmitted: boolean;
   leaderboard: LeaderboardEntry[];
   isLocked: boolean;
@@ -33,7 +35,7 @@ export default function LeagueClient({
   const now = new Date();
   const daysUntilLock = Math.max(0, Math.ceil((lockDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
-  async function handleSave(picks: PicksMap) {
+  async function handleSave(picks: PicksMap, games: GamesMap) {
     setSaving(true);
     setMessage("");
 
@@ -42,7 +44,7 @@ export default function LeagueClient({
       const saveRes = await fetch("/api/bracket/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inviteCode: league.inviteCode, picksData: picks }),
+        body: JSON.stringify({ inviteCode: league.inviteCode, picksData: picks, gamesData: games }),
       });
 
       if (!saveRes.ok) {
@@ -136,6 +138,7 @@ export default function LeagueClient({
         {tab === "bracket" && (
           <BracketPicker
             initialPicks={userPicks}
+            initialGames={userGames}
             locked={isLocked || submitted}
             onSave={!isLocked && !submitted ? handleSave : undefined}
           />
@@ -166,9 +169,9 @@ export default function LeagueClient({
                         <span className="text-emerald-500 text-xs ml-2">(you)</span>
                       )}
                     </span>
-                    <span className="text-lg font-bold text-white w-12 text-right">{entry.score}</span>
-                    <span className="text-xs text-gray-500 w-20 text-right">
-                      {entry.correctPicks}/{entry.totalPicks} correct
+                    <span className="text-lg font-bold text-white w-12 text-right">{entry.score}pt</span>
+                    <span className="text-xs text-gray-500 w-24 text-right">
+                      {entry.correctPicks} correct{entry.exactPicks > 0 && ` (${entry.exactPicks} exact)`}
                     </span>
                   </div>
                 ))}

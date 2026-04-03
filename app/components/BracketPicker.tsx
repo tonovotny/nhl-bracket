@@ -7,6 +7,7 @@ import {
   countPicks,
   TOTAL_PICKS,
   type PicksMap,
+  type GamesMap,
 } from "@/lib/bracket-data";
 import type { TeamSeed } from "@/lib/seed";
 
@@ -64,19 +65,57 @@ function TeamButton({
   );
 }
 
+function GamesSelector({
+  selectedGames,
+  onSelect,
+  disabled,
+}: {
+  selectedGames: number | undefined;
+  onSelect: (games: number) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1 px-2 py-1.5 bg-gray-900/50">
+      <span className="text-[10px] text-gray-500 mr-1">in</span>
+      {[4, 5, 6, 7].map((g) => (
+        <button
+          key={g}
+          onClick={() => onSelect(g)}
+          disabled={disabled}
+          className={`w-6 h-6 rounded text-[11px] font-medium transition-colors
+            ${selectedGames === g
+              ? "bg-amber-600 text-white"
+              : "bg-gray-700/50 text-gray-400 hover:bg-gray-600/50"
+            }
+            ${disabled ? "cursor-default" : "cursor-pointer"}
+          `}
+        >
+          {g}
+        </button>
+      ))}
+      <span className="text-[10px] text-amber-500/70 ml-1">3x</span>
+    </div>
+  );
+}
+
 function Matchup({
   slotId,
   picks,
+  games,
   onPick,
+  onGames,
   locked,
 }: {
   slotId: string;
   picks: PicksMap;
+  games: GamesMap;
   onPick: (slotId: string, teamId: number) => void;
+  onGames: (slotId: string, numGames: number) => void;
   locked: boolean;
 }) {
   const [team1, team2] = getTeamsInSlot(slotId, picks);
   const currentPick = picks[slotId];
+  const hasPick = currentPick !== undefined;
 
   return (
     <div className="bg-gray-800/80 border border-gray-700 rounded-lg overflow-hidden my-1.5 min-w-[160px]">
@@ -93,6 +132,16 @@ function Matchup({
         onClick={() => team2 && onPick(slotId, team2.id)}
         disabled={locked || !team2}
       />
+      {hasPick && (
+        <>
+          <div className="h-px bg-gray-700" />
+          <GamesSelector
+            selectedGames={games[slotId]}
+            onSelect={(g) => onGames(slotId, g)}
+            disabled={locked}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -101,13 +150,17 @@ function RoundColumn({
   label,
   slots,
   picks,
+  games,
   onPick,
+  onGames,
   locked,
 }: {
   label: string;
   slots: string[];
   picks: PicksMap;
+  games: GamesMap;
   onPick: (slotId: string, teamId: number) => void;
+  onGames: (slotId: string, numGames: number) => void;
   locked: boolean;
 }) {
   return (
@@ -116,7 +169,7 @@ function RoundColumn({
         {label}
       </div>
       {slots.map((slotId) => (
-        <Matchup key={slotId} slotId={slotId} picks={picks} onPick={onPick} locked={locked} />
+        <Matchup key={slotId} slotId={slotId} picks={picks} games={games} onPick={onPick} onGames={onGames} locked={locked} />
       ))}
     </div>
   );
@@ -124,34 +177,54 @@ function RoundColumn({
 
 export default function BracketPicker({
   initialPicks,
+  initialGames,
   locked,
   onSave,
 }: {
   initialPicks?: PicksMap;
+  initialGames?: GamesMap;
   locked?: boolean;
-  onSave?: (picks: PicksMap) => void;
+  onSave?: (picks: PicksMap, games: GamesMap) => void;
 }) {
   const [picks, setPicks] = useState<PicksMap>(initialPicks ?? {});
+  const [games, setGames] = useState<GamesMap>(initialGames ?? {});
   const isLocked = locked ?? false;
 
   const handlePick = useCallback((slotId: string, teamId: number) => {
     if (isLocked) return;
-    setPicks((prev) => makePick(slotId, teamId, prev));
+    setPicks((prevPicks) => {
+      const result = makePick(slotId, teamId, prevPicks, games);
+      setGames(result.games);
+      return result.picks;
+    });
+  }, [isLocked, games]);
+
+  const handleGames = useCallback((slotId: string, numGames: number) => {
+    if (isLocked) return;
+    setGames((prev) => ({ ...prev, [slotId]: numGames }));
   }, [isLocked]);
 
   const picksCount = countPicks(picks);
+  const gamesCount = Object.keys(games).length;
   const isComplete = picksCount === TOTAL_PICKS;
+  const allGamesSet = gamesCount === TOTAL_PICKS;
 
   return (
     <div>
       {/* Status bar */}
       <div className="flex items-center justify-between px-2 py-2 mb-3 text-sm text-gray-400">
-        <span>
-          Picks: <span className={isComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{picksCount}/{TOTAL_PICKS}</span>
-        </span>
+        <div className="flex gap-4">
+          <span>
+            Winners: <span className={isComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{picksCount}/{TOTAL_PICKS}</span>
+          </span>
+          <span>
+            Games: <span className={allGamesSet ? "text-amber-400 font-medium" : "text-gray-300"}>{gamesCount}/{TOTAL_PICKS}</span>
+            <span className="text-[10px] text-gray-600 ml-1">(optional, 3x bonus)</span>
+          </span>
+        </div>
         {onSave && (
           <button
-            onClick={() => onSave(picks)}
+            onClick={() => onSave(picks, games)}
             disabled={!isComplete || isLocked}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${isComplete && !isLocked
@@ -159,9 +232,14 @@ export default function BracketPicker({
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
           >
-            {isLocked ? "Locked" : isComplete ? "Submit Bracket" : "Complete all picks"}
+            {isLocked ? "Locked" : isComplete ? "Submit Bracket" : "Pick all winners"}
           </button>
         )}
+      </div>
+
+      {/* Scoring info */}
+      <div className="px-2 mb-3 text-[11px] text-gray-600">
+        1pt per correct winner &middot; 3pt if you also nail the exact games (4/5/6/7)
       </div>
 
       {/* Bracket grid */}
@@ -172,21 +250,27 @@ export default function BracketPicker({
             label="Round 1"
             slots={["W_R1_1", "W_R1_2", "W_R1_3", "W_R1_4"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
           <RoundColumn
             label="Round 2"
             slots={["W_R2_1", "W_R2_2"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
           <RoundColumn
             label="West Final"
             slots={["W_CF"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
 
@@ -196,7 +280,7 @@ export default function BracketPicker({
               Stanley Cup
             </div>
             <div className="text-3xl mb-2">🏆</div>
-            <Matchup slotId="SCF" picks={picks} onPick={handlePick} locked={isLocked} />
+            <Matchup slotId="SCF" picks={picks} games={games} onPick={handlePick} onGames={handleGames} locked={isLocked} />
           </div>
 
           {/* Eastern Conference (mirrored) */}
@@ -204,21 +288,27 @@ export default function BracketPicker({
             label="East Final"
             slots={["E_CF"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
           <RoundColumn
             label="Round 2"
             slots={["E_R2_1", "E_R2_2"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
           <RoundColumn
             label="Round 1"
             slots={["E_R1_1", "E_R1_2", "E_R1_3", "E_R1_4"]}
             picks={picks}
+            games={games}
             onPick={handlePick}
+            onGames={handleGames}
             locked={isLocked}
           />
         </div>
