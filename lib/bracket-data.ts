@@ -10,6 +10,8 @@ export type SeriesInfo = {
   homeTeamId: number | null;
   awayTeamId: number | null;
   winnerTeamId: number | null;
+  homeTeamWins: number;
+  awayTeamWins: number;
   gamesPlayed: number | null;
   status: string; // "pending" | "active" | "complete"
 };

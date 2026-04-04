@@ -46,6 +46,8 @@ export default async function LeaguePage({ params }: { params: Params }) {
     homeTeamId: s.homeTeamId,
     awayTeamId: s.awayTeamId,
     winnerTeamId: s.winnerTeamId,
+    homeTeamWins: s.homeTeamWins,
+    awayTeamWins: s.awayTeamWins,
     gamesPlayed: s.gamesPlayed,
     status: s.status,
   }));
