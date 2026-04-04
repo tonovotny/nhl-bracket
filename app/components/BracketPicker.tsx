@@ -14,13 +14,6 @@ import {
   type SeriesInfo,
 } from "@/lib/bracket-data";
 
-const teamColors: Record<string, string> = {
-  WPG: "#041E42", DAL: "#006847", VGK: "#B4975A", EDM: "#FF4C00",
-  MIN: "#154734", LAK: "#111111", COL: "#6F263D", VAN: "#00205B",
-  WSH: "#C8102E", TOR: "#00205B", FLA: "#C8102E", CAR: "#CC0000",
-  NJD: "#CE1126", TBL: "#002868", OTT: "#C52032", MTL: "#AF1E2D",
-};
-
 const ROUND_LABELS: Record<number, string> = {
   1: "Round 1",
   2: "Round 2",
@@ -50,8 +43,6 @@ function TeamButton({
     );
   }
 
-  const color = teamColors[team.abbreviation] || "#333";
-
   return (
     <button
       onClick={onClick}
@@ -67,12 +58,11 @@ function TeamButton({
       `}
     >
       <span className="text-xs text-gray-500 w-4">{team.seed}</span>
-      <span
-        className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-        style={{ backgroundColor: color }}
-      >
-        {team.abbreviation.slice(0, 3)}
-      </span>
+      <img
+        src={`https://assets.nhle.com/logos/nhl/svg/${team.abbreviation}_dark.svg`}
+        alt={team.abbreviation}
+        className="w-5 h-5 shrink-0"
+      />
       <span className={`truncate ${isWinner ? "font-semibold text-emerald-300" : ""}`}>{team.name}</span>
     </button>
   );
