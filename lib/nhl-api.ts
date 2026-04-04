@@ -12,6 +12,45 @@ type NHLStandingsResponse = {
   standings: NHLStanding[];
 };
 
+type NHLPlayoffSeries = {
+  playoffRound: number;
+  topSeedWins: number;
+  bottomSeedWins: number;
+  winningTeamId?: number;
+  topSeedTeam: { abbrev: string };
+  bottomSeedTeam: { abbrev: string };
+};
+
+type NHLPlayoffResponse = {
+  series: NHLPlayoffSeries[];
+};
+
+// Keyed by "ABBREV1-ABBREV2" (sorted) → { wins for each abbrev }
+export type SeriesWinsMap = Record<string, { [abbrev: string]: number }>;
+
+export async function fetchPlayoffSeriesWins(): Promise<SeriesWinsMap> {
+  const res = await fetch("https://api-web.nhle.com/v1/playoff-bracket/2025", {
+    next: { revalidate: 300 }, // cache for 5 minutes
+  });
+
+  if (!res.ok) return {};
+
+  const data: NHLPlayoffResponse = await res.json();
+  const result: SeriesWinsMap = {};
+
+  for (const s of data.series) {
+    const topAbbrev = s.topSeedTeam.abbrev;
+    const botAbbrev = s.bottomSeedTeam.abbrev;
+    const key = [topAbbrev, botAbbrev].sort().join("-");
+    result[key] = {
+      [topAbbrev]: s.topSeedWins,
+      [botAbbrev]: s.bottomSeedWins,
+    };
+  }
+
+  return result;
+}
+
 export async function fetchPlayoffTeams(): Promise<TeamSeed[]> {
   const res = await fetch("https://api-web.nhle.com/v1/standings/now", {
     next: { revalidate: 3600 }, // cache for 1 hour

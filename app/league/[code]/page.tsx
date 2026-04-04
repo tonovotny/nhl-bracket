@@ -4,7 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { calculateLeaderboard } from "@/lib/scoring";
-import { fetchPlayoffTeams } from "@/lib/nhl-api";
+import { fetchPlayoffTeams, fetchPlayoffSeriesWins } from "@/lib/nhl-api";
+import { teams as teamsTable } from "@/lib/schema";
 import type { SeriesInfo } from "@/lib/bracket-data";
 import LeagueClient from "./LeagueClient";
 
@@ -72,10 +73,32 @@ export default async function LeaguePage({ params }: { params: Params }) {
     }
   }
 
-  const [leaderboard, teams] = await Promise.all([
+  const [leaderboard, teams, seriesWins, allTeamRows] = await Promise.all([
     calculateLeaderboard(league.id),
     fetchPlayoffTeams(),
+    fetchPlayoffSeriesWins(),
+    db.select({ id: teamsTable.id, abbreviation: teamsTable.abbreviation }).from(teamsTable).all(),
   ]);
+
+  // Build team ID → abbreviation lookup
+  const teamAbbrevById: Record<number, string> = {};
+  for (const t of allTeamRows) {
+    teamAbbrevById[t.id] = t.abbreviation;
+  }
+
+  // Merge live win counts from NHL API into series data
+  for (const s of seriesData) {
+    if (!s.homeTeamId || !s.awayTeamId) continue;
+    const homeAbbrev = teamAbbrevById[s.homeTeamId];
+    const awayAbbrev = teamAbbrevById[s.awayTeamId];
+    if (!homeAbbrev || !awayAbbrev) continue;
+    const key = [homeAbbrev, awayAbbrev].sort().join("-");
+    const wins = seriesWins[key];
+    if (wins) {
+      s.homeTeamWins = wins[homeAbbrev] ?? 0;
+      s.awayTeamWins = wins[awayAbbrev] ?? 0;
+    }
+  }
 
   return (
     <LeagueClient
