@@ -25,12 +25,14 @@ function TeamButton({
   team,
   isPicked,
   isWinner,
+  wins,
   onClick,
   disabled,
 }: {
   team: TeamSeed | null;
   isPicked: boolean;
   isWinner: boolean;
+  wins: number | null;
   onClick: () => void;
   disabled: boolean;
 }) {
@@ -64,6 +66,13 @@ function TeamButton({
         className="w-5 h-5 shrink-0"
       />
       <span className={`truncate ${isWinner ? "font-semibold text-emerald-300" : ""}`}>{team.name}</span>
+      {wins !== null && (
+        <span className={`ml-auto text-xs font-bold tabular-nums ${
+          isWinner ? "text-emerald-400" : wins > 0 ? "text-gray-300" : "text-gray-600"
+        }`}>
+          {wins}
+        </span>
+      )}
     </button>
   );
 }
@@ -124,6 +133,7 @@ function Matchup({
   const s = seriesMap[slotId];
   const isComplete = s?.status === "complete";
   const isActive = s?.status === "active";
+  const showWins = isActive || isComplete;
   const currentPick = picks[slotId];
   const hasPick = currentPick !== undefined;
 
@@ -141,6 +151,7 @@ function Matchup({
         team={team1}
         isPicked={canBet && currentPick === team1?.id}
         isWinner={isComplete && s?.winnerTeamId === team1?.id}
+        wins={showWins ? (s?.homeTeamWins ?? 0) : null}
         onClick={() => team1 && onPick(slotId, team1.id)}
         disabled={!canBet || !team1}
       />
@@ -149,6 +160,7 @@ function Matchup({
         team={team2}
         isPicked={canBet && currentPick === team2?.id}
         isWinner={isComplete && s?.winnerTeamId === team2?.id}
+        wins={showWins ? (s?.awayTeamWins ?? 0) : null}
         onClick={() => team2 && onPick(slotId, team2.id)}
         disabled={!canBet || !team2}
       />

@@ -42,6 +42,8 @@ export const series = sqliteTable("series", {
   homeTeamId: integer("home_team_id").references(() => teams.id),
   awayTeamId: integer("away_team_id").references(() => teams.id),
   winnerTeamId: integer("winner_team_id").references(() => teams.id),
+  homeTeamWins: integer("home_team_wins").notNull().default(0),
+  awayTeamWins: integer("away_team_wins").notNull().default(0),
   gamesPlayed: integer("games_played"),
   status: text("status").notNull().default("pending"), // pending, active, complete
 });
