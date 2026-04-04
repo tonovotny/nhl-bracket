@@ -25,6 +25,7 @@ function TeamButton({
   team,
   isPicked,
   isWinner,
+  wasPicked,
   wins,
   onClick,
   disabled,
@@ -32,6 +33,7 @@ function TeamButton({
   team: TeamSeed | null;
   isPicked: boolean;
   isWinner: boolean;
+  wasPicked: boolean; // user picked this team on a completed series
   wins: number | null;
   onClick: () => void;
   disabled: boolean;
@@ -45,16 +47,24 @@ function TeamButton({
     );
   }
 
+  // Pick result styling for completed series
+  const correctPick = wasPicked && isWinner;
+  const wrongPick = wasPicked && !isWinner;
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       className={`flex items-center gap-2 px-3 py-2 text-sm w-full transition-colors text-left
-        ${isWinner
+        ${correctPick
           ? "bg-emerald-900/50 border-l-3 border-emerald-400"
-          : isPicked
-            ? "bg-emerald-900/40 border-l-3 border-emerald-500"
-            : "border-l-3 border-transparent hover:bg-gray-700/50"
+          : wrongPick
+            ? "bg-red-900/30 border-l-3 border-red-400"
+            : isWinner
+              ? "bg-emerald-900/30 border-l-3 border-emerald-400/50"
+              : isPicked
+                ? "bg-emerald-900/40 border-l-3 border-emerald-500"
+                : "border-l-3 border-transparent hover:bg-gray-700/50"
         }
         ${disabled ? "cursor-default" : "cursor-pointer"}
       `}
@@ -65,7 +75,9 @@ function TeamButton({
         alt={team.abbreviation}
         className="w-5 h-5 shrink-0"
       />
-      <span className={`truncate ${isWinner ? "font-semibold text-emerald-300" : ""}`}>{team.name}</span>
+      <span className={`truncate ${
+        correctPick ? "font-semibold text-emerald-300" : wrongPick ? "text-red-300 line-through" : isWinner ? "font-semibold text-emerald-300" : ""
+      }`}>{team.name}</span>
       {wins !== null && (
         <span className={`ml-auto text-xs font-bold tabular-nums ${
           isWinner ? "text-emerald-400" : wins > 0 ? "text-gray-300" : "text-gray-600"
@@ -136,10 +148,13 @@ function Matchup({
   const showWins = isActive || isComplete;
   const currentPick = picks[slotId];
   const hasPick = currentPick !== undefined;
+  const pickCorrect = isComplete && hasPick && currentPick === s?.winnerTeamId;
+  const pickWrong = isComplete && hasPick && currentPick !== s?.winnerTeamId;
+  const exactBonus = pickCorrect && games[slotId] === s?.gamesPlayed;
 
   return (
     <div className={`bg-gray-800/80 border rounded-lg overflow-hidden my-1.5 min-w-[160px] ${
-      isComplete ? "border-gray-600" : isActive ? "border-blue-700/50" : "border-gray-700"
+      exactBonus ? "border-amber-500/70" : pickCorrect ? "border-emerald-500/60" : pickWrong ? "border-red-500/50" : isComplete ? "border-gray-600" : isActive ? "border-blue-700/50" : "border-gray-700"
     }`}>
       {/* Active series indicator */}
       {isActive && (
@@ -151,6 +166,7 @@ function Matchup({
         team={team1}
         isPicked={canBet && currentPick === team1?.id}
         isWinner={isComplete && s?.winnerTeamId === team1?.id}
+        wasPicked={isComplete && hasPick && currentPick === team1?.id}
         wins={showWins ? (s?.homeTeamWins ?? 0) : null}
         onClick={() => team1 && onPick(slotId, team1.id)}
         disabled={!canBet || !team1}
@@ -160,14 +176,45 @@ function Matchup({
         team={team2}
         isPicked={canBet && currentPick === team2?.id}
         isWinner={isComplete && s?.winnerTeamId === team2?.id}
+        wasPicked={isComplete && hasPick && currentPick === team2?.id}
         wins={showWins ? (s?.awayTeamWins ?? 0) : null}
         onClick={() => team2 && onPick(slotId, team2.id)}
         disabled={!canBet || !team2}
       />
-      {/* Completed series result */}
+      {/* Completed series result with pick indicator */}
       {isComplete && s?.gamesPlayed && (
-        <div className="text-[10px] text-gray-500 text-center py-1 bg-gray-900/50">
-          Won in {s.gamesPlayed}
+        <div className={`text-[10px] text-center py-1 flex flex-col gap-0.5 ${
+          hasPick
+            ? currentPick === s.winnerTeamId
+              ? games[slotId] === s.gamesPlayed
+                ? "bg-amber-900/40 text-amber-400"
+                : "bg-emerald-900/30 text-emerald-400"
+              : "bg-red-900/30 text-red-400"
+            : "bg-gray-900/50 text-gray-500"
+        }`}>
+          {hasPick ? (
+            currentPick === s.winnerTeamId ? (
+              games[slotId] === s.gamesPlayed ? (
+                <span>✓ Won in {s.gamesPlayed} · <span className="font-bold">+4pts</span></span>
+              ) : (
+                <>
+                  <span>✓ Won in {s.gamesPlayed} · +1pt</span>
+                  {games[slotId] && (
+                    <span className="text-gray-500">Predicted in {games[slotId]}</span>
+                  )}
+                </>
+              )
+            ) : (
+              <>
+                <span>✗ Won in {s.gamesPlayed}</span>
+                {games[slotId] && (
+                  <span className="text-gray-500">Predicted in {games[slotId]}</span>
+                )}
+              </>
+            )
+          ) : (
+            <span>Won in {s.gamesPlayed}</span>
+          )}
         </div>
       )}
       {/* Games selector for bettable series */}
