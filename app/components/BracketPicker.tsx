@@ -14,6 +14,11 @@ import {
   type SeriesInfo,
 } from "@/lib/bracket-data";
 
+const FAVORITE_TEAMS: Record<string, string> = {
+  SJS: "WYNO",
+  PHI: "TOMAS",
+};
+
 const ROUND_LABELS: Record<number, string> = {
   1: "Round 1",
   2: "Round 2",
@@ -50,6 +55,7 @@ function TeamButton({
   // Pick result styling for completed series
   const correctPick = wasPicked && isWinner;
   const wrongPick = wasPicked && !isWinner;
+  const favOwner = FAVORITE_TEAMS[team.abbreviation];
 
   return (
     <button
@@ -66,6 +72,7 @@ function TeamButton({
                 ? "bg-emerald-900/40 border-l-3 border-emerald-500"
                 : "border-l-3 border-transparent hover:bg-gray-700/50"
         }
+        ${favOwner ? "ring-1 ring-inset ring-yellow-500/40 bg-yellow-900/10" : ""}
         ${disabled ? "cursor-default" : "cursor-pointer"}
       `}
     >
@@ -78,6 +85,9 @@ function TeamButton({
       <span className={`truncate ${
         correctPick ? "font-semibold text-emerald-300" : wrongPick ? "text-red-300 line-through" : isWinner ? "font-semibold text-emerald-300" : ""
       }`}>{team.abbreviation}</span>
+      {favOwner && (
+        <span className="text-[9px] text-yellow-400/70 uppercase tracking-wide">{favOwner}</span>
+      )}
       {wins !== null && (
         <span className={`ml-auto text-xs font-bold tabular-nums ${
           isWinner ? "text-emerald-400" : wins > 0 ? "text-gray-300" : "text-gray-600"
@@ -91,32 +101,46 @@ function TeamButton({
 
 function GamesSelector({
   selectedGames,
+  actualGames,
   onSelect,
   disabled,
 }: {
   selectedGames: number | undefined;
+  actualGames?: number | null;
   onSelect: (games: number) => void;
   disabled: boolean;
 }) {
   return (
     <div className="flex items-center gap-1 px-2 py-1.5 bg-gray-900/50">
       <span className="text-[10px] text-gray-500 mr-1">in</span>
-      {[4, 5, 6, 7].map((g) => (
-        <button
-          key={g}
-          onClick={() => onSelect(g)}
-          disabled={disabled}
-          className={`w-6 h-6 rounded text-[11px] font-medium transition-colors
-            ${selectedGames === g
-              ? "bg-amber-600 text-white"
-              : "bg-gray-700/50 text-gray-400 hover:bg-gray-600/50"
-            }
-            ${disabled ? "cursor-default" : "cursor-pointer"}
-          `}
-        >
-          {g}
-        </button>
-      ))}
+      {[4, 5, 6, 7].map((g) => {
+        const isSelected = selectedGames === g;
+        const isActual = actualGames === g;
+        const isCorrect = isSelected && isActual;
+        const isWrongPick = isSelected && actualGames != null && !isActual;
+        return (
+          <button
+            key={g}
+            onClick={() => onSelect(g)}
+            disabled={disabled}
+            className={`w-6 h-6 rounded text-[11px] font-medium transition-colors
+              ${isCorrect
+                ? "bg-amber-600 text-white ring-1 ring-amber-400"
+                : isWrongPick
+                  ? "bg-red-800/70 text-red-300 ring-1 ring-red-500/50"
+                  : isActual
+                    ? "bg-emerald-800/50 text-emerald-300 ring-1 ring-emerald-500/50"
+                    : isSelected
+                      ? "bg-amber-600 text-white"
+                      : "bg-gray-700/50 text-gray-400 hover:bg-gray-600/50"
+              }
+              ${disabled ? "cursor-default" : "cursor-pointer"}
+            `}
+          >
+            {g}
+          </button>
+        );
+      })}
       <span className="text-[10px] text-amber-500/70 ml-1">3x</span>
     </div>
   );
@@ -183,7 +207,7 @@ function Matchup({
       />
       {/* Completed series result with pick indicator */}
       {isComplete && s?.gamesPlayed && (
-        <div className={`text-[10px] text-center py-1 flex flex-col gap-0.5 ${
+        <div className={`text-[10px] text-center py-1 ${
           hasPick
             ? currentPick === s.winnerTeamId
               ? games[slotId] === s.gamesPlayed
@@ -197,34 +221,25 @@ function Matchup({
               games[slotId] === s.gamesPlayed ? (
                 <span>✓ Won in {s.gamesPlayed} · <span className="font-bold">+4pts</span></span>
               ) : (
-                <>
-                  <span>✓ Won in {s.gamesPlayed} · +1pt</span>
-                  {games[slotId] && (
-                    <span className="text-gray-500">Predicted in {games[slotId]}</span>
-                  )}
-                </>
+                <span>✓ Won in {s.gamesPlayed} · +1pt</span>
               )
             ) : (
-              <>
-                <span>✗ Won in {s.gamesPlayed}</span>
-                {games[slotId] && (
-                  <span className="text-gray-500">Predicted in {games[slotId]}</span>
-                )}
-              </>
+              <span>✗ Won in {s.gamesPlayed}</span>
             )
           ) : (
             <span>Won in {s.gamesPlayed}</span>
           )}
         </div>
       )}
-      {/* Games selector for bettable series */}
-      {canBet && hasPick && (
+      {/* Games selector */}
+      {((canBet && hasPick) || (isComplete && hasPick)) && (
         <>
           <div className="h-px bg-gray-700" />
           <GamesSelector
             selectedGames={games[slotId]}
+            actualGames={isComplete ? s?.gamesPlayed : null}
             onSelect={(g) => onGames(slotId, g)}
-            disabled={false}
+            disabled={!canBet}
           />
         </>
       )}
