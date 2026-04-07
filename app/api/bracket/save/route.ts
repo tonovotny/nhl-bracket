@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { db, migrationsRan } from "@/lib/db";
-import { users, brackets, picks, leagues, series } from "@/lib/schema";
+import { brackets, picks, leagues, series } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { getSlotsForRound } from "@/lib/bracket-data";
+import { auth } from "@/lib/auth";
 
 const DEFAULT_LEAGUE_CODE = "NHL2026";
 
@@ -21,16 +21,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing data" }, { status: 400 });
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
-  const user = await db.select().from(users).where(eq(users.token, token)).get();
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 });
-  }
+  const user = { id: session.user.id };
 
   const league = await db
     .select()

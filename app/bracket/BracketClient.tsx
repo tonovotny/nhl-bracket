@@ -64,8 +64,29 @@ export default function BracketClient({
           PLAYOFF BRACKET 2026
         </h1>
         <p className="text-sm text-gray-500 mt-1">NHL Stanley Cup Playoffs</p>
-        <div className="flex justify-center gap-5 mt-2 text-xs text-gray-500">
+        <div className="flex justify-center items-center gap-5 mt-2 text-xs text-gray-500">
           <span>{members.length} players</span>
+          <span>·</span>
+          <span>{currentUser.name}</span>
+          <button
+            onClick={() => {
+              fetch("/api/auth/csrf").then(r => r.json()).then(({ csrfToken }) => {
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = "/api/auth/signout";
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "csrfToken";
+                input.value = csrfToken;
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+              });
+            }}
+            className="text-gray-500 hover:text-gray-300 underline cursor-pointer"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 

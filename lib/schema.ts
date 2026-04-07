@@ -21,7 +21,10 @@ export const leagues = sqliteTable("leagues", {
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  token: text("token").notNull().unique(), // session token for re-identification
+  email: text("email"),
+  image: text("image"),
+  googleId: text("google_id").unique(),
+  token: text("token").unique(),
   createdAt: text("created_at").notNull(),
 });
 

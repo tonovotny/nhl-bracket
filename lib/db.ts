@@ -14,6 +14,9 @@ const migrations = [
   "ALTER TABLE picks ADD COLUMN predicted_games INTEGER",
   "ALTER TABLE series ADD COLUMN home_team_wins INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE series ADD COLUMN away_team_wins INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN email TEXT",
+  "ALTER TABLE users ADD COLUMN image TEXT",
+  "ALTER TABLE users ADD COLUMN google_id TEXT",
 ];
 
 const migrationsRan = (async () => {

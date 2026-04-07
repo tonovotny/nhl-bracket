@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { leagues, users, leagueMembers, brackets } from "@/lib/schema";
+import { leagues, leagueMembers, brackets } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-import crypto from "crypto";
+import { auth } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { inviteCode, userName } = body;
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  }
 
-  if (!inviteCode || !userName) {
-    return NextResponse.json({ error: "Invite code and your name are required" }, { status: 400 });
+  const body = await request.json();
+  const { inviteCode } = body;
+
+  if (!inviteCode) {
+    return NextResponse.json({ error: "Invite code is required" }, { status: 400 });
   }
 
   const league = await db
@@ -20,42 +24,18 @@ export async function POST(request: Request) {
     .get();
 
   if (!league) {
-    return NextResponse.json({ error: "League not found. Check the invite code." }, { status: 404 });
-  }
-
-  const cookieStore = await cookies();
-  const existingToken = cookieStore.get("user_token")?.value;
-  let user;
-
-  if (existingToken) {
-    user = await db.select().from(users).where(eq(users.token, existingToken)).get();
-  }
-
-  if (!user) {
-    const token = crypto.randomUUID();
-    user = await db
-      .insert(users)
-      .values({ name: userName, token, createdAt: new Date().toISOString() })
-      .returning()
-      .get();
-
-    cookieStore.set("user_token", user.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 90,
-      path: "/",
-    });
+    return NextResponse.json({ error: "League not found" }, { status: 404 });
   }
 
   const existing = await db
     .select()
     .from(leagueMembers)
-    .where(and(eq(leagueMembers.leagueId, league.id), eq(leagueMembers.userId, user.id)))
+    .where(and(eq(leagueMembers.leagueId, league.id), eq(leagueMembers.userId, session.user.id)))
     .get();
 
   if (!existing) {
-    await db.insert(leagueMembers).values({ leagueId: league.id, userId: user.id }).run();
-    await db.insert(brackets).values({ userId: user.id, leagueId: league.id }).run();
+    await db.insert(leagueMembers).values({ leagueId: league.id, userId: session.user.id }).run();
+    await db.insert(brackets).values({ userId: session.user.id, leagueId: league.id }).run();
   }
 
   return NextResponse.json({ inviteCode: league.inviteCode, leagueName: league.name });

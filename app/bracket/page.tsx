@@ -1,8 +1,8 @@
 import { db, migrationsRan } from "@/lib/db";
 import { leagues, leagueMembers, users, brackets, picks, series } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { calculateLeaderboard } from "@/lib/scoring";
 import { fetchPlayoffTeams, fetchPlayoffSeriesWins } from "@/lib/nhl-api";
 import { teams as teamsTable } from "@/lib/schema";
@@ -14,6 +14,13 @@ const DEFAULT_LEAGUE_CODE = "NHL2026";
 export default async function BracketPage() {
   await migrationsRan;
 
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/");
+  }
+
+  const currentUser = { id: session.user.id, name: session.user.name };
+
   const league = await db
     .select()
     .from(leagues)
@@ -21,17 +28,6 @@ export default async function BracketPage() {
     .get();
 
   if (!league) {
-    redirect("/");
-  }
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
-  let currentUser = null;
-  if (token) {
-    currentUser = (await db.select().from(users).where(eq(users.token, token)).get()) ?? null;
-  }
-
-  if (!currentUser) {
     redirect("/");
   }
 
