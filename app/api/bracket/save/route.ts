@@ -5,10 +5,11 @@ import { users, brackets, picks, leagues, series } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { getSlotsForRound } from "@/lib/bracket-data";
 
+const DEFAULT_LEAGUE_CODE = "NHL2026";
+
 export async function POST(request: Request) {
   const body = await request.json();
-  const { inviteCode, picksData, gamesData, round } = body as {
-    inviteCode: string;
+  const { picksData, gamesData, round } = body as {
     picksData: Record<string, number>;
     gamesData?: Record<string, number>;
     round: number;
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
 
   await migrationsRan;
 
-  if (!inviteCode || !picksData || !round) {
+  if (!picksData || !round) {
     return NextResponse.json({ error: "Missing data" }, { status: 400 });
   }
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   const league = await db
     .select()
     .from(leagues)
-    .where(eq(leagues.inviteCode, inviteCode.toUpperCase()))
+    .where(eq(leagues.inviteCode, DEFAULT_LEAGUE_CODE))
     .get();
 
   if (!league) {
@@ -71,7 +72,6 @@ export async function POST(request: Request) {
   }
 
   for (const [slotId, teamId] of Object.entries(picksData)) {
-    // Only save picks for slots in this round
     if (!roundSlots.includes(slotId)) continue;
     await db.insert(picks).values({
       bracketId: bracket.id,
