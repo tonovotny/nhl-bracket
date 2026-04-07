@@ -50,6 +50,10 @@ export default async function Home() {
           </button>
         </form>
       </div>
+
+      <footer className="absolute bottom-6 text-center text-xs text-gray-600">
+        Made by Tomas & Claude
+      </footer>
     </div>
   );
 }

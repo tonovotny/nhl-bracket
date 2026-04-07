@@ -180,6 +180,10 @@ export default function BracketClient({
           </div>
         )}
       </main>
+
+      <footer className="text-center py-6 text-xs text-gray-600">
+        Made by Tomas & Claude
+      </footer>
     </div>
   );
 }
