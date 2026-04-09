@@ -81,10 +81,11 @@ async function main() {
     });
   }
 
-  // Seed Round 1 series
+  // Seed Round 1 series (update existing rows by slot_id)
   for (const matchup of round1Matchups) {
     await client.execute({
-      sql: "INSERT OR REPLACE INTO series (slot_id, round, home_team_id, away_team_id, status) VALUES (?, ?, ?, ?, 'pending')",
+      sql: `INSERT INTO series (slot_id, round, home_team_id, away_team_id, status) VALUES (?, ?, ?, ?, 'pending')
+            ON CONFLICT(slot_id) DO UPDATE SET home_team_id = excluded.home_team_id, away_team_id = excluded.away_team_id`,
       args: [matchup.slotId, 1, matchup.home, matchup.away],
     });
   }
@@ -93,7 +94,8 @@ async function main() {
   for (const slot of allSlots) {
     if (slot.round > 1) {
       await client.execute({
-        sql: "INSERT OR REPLACE INTO series (slot_id, round, status) VALUES (?, ?, 'pending')",
+        sql: `INSERT INTO series (slot_id, round, status) VALUES (?, ?, 'pending')
+              ON CONFLICT(slot_id) DO NOTHING`,
         args: [slot.slotId, slot.round],
       });
     }
