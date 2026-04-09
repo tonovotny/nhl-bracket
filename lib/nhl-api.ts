@@ -5,6 +5,10 @@ type NHLStanding = {
   teamAbbrev: { default: string };
   conferenceAbbrev: string;
   conferenceSequence: number;
+  divisionAbbrev: string;
+  divisionSequence: number;
+  wildcardSequence: number;
+  points: number;
   clinchIndicator?: string | null;
 };
 
@@ -67,17 +71,22 @@ export async function fetchPlayoffTeams(): Promise<TeamSeed[]> {
 
   for (const team of data.standings) {
     const conf = team.conferenceAbbrev; // "W" or "E"
-    const seed = team.conferenceSequence;
+    const divRank = team.divisionSequence;
+    const wcRank = team.wildcardSequence;
 
-    // Only top 8 per conference make playoffs
-    if (seed > 8) continue;
+    // Playoff teams: top 3 in each division (divisionSequence 1-3) + 2 wild cards
+    const isPlayoff = divRank <= 3 || (wcRank >= 1 && wcRank <= 2);
+    if (!isPlayoff) continue;
 
     const entry: TeamSeed = {
       id: 0, // assigned below
       name: team.teamName.default,
       abbreviation: team.teamAbbrev.default,
-      seed,
+      seed: team.conferenceSequence, // overall conference rank for display
       conference: conf,
+      division: team.divisionAbbrev,
+      divisionRank: divRank <= 3 ? divRank : 0,
+      wildcardRank: wcRank >= 1 && wcRank <= 2 ? wcRank : 0,
     };
 
     if (conf === "W") {
@@ -87,7 +96,7 @@ export async function fetchPlayoffTeams(): Promise<TeamSeed[]> {
     }
   }
 
-  // Sort by seed and assign stable IDs: W seeds 1-8 get IDs 1-8, E seeds 1-8 get IDs 9-16
+  // Sort by conference seed and assign stable IDs: W seeds get IDs 1-8, E seeds get IDs 9-16
   western.sort((a, b) => a.seed - b.seed);
   eastern.sort((a, b) => a.seed - b.seed);
 

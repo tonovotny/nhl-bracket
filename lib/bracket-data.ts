@@ -20,15 +20,15 @@ function getTeamById(teams: TeamSeed[], id: number): TeamSeed | undefined {
   return teams.find((t) => t.id === id);
 }
 
-// Fixed bracket paths: R2 matchups are determined by bracket position, not reseeding
-// R2_1: Winner of R1_1 vs Winner of R1_4
-// R2_2: Winner of R1_2 vs Winner of R1_3
+// Fixed bracket paths: R2 pairs within same division side
+// R2_1: Winner of R1_1 vs Winner of R1_2 (best division winner's side)
+// R2_2: Winner of R1_3 vs Winner of R1_4 (other division's side)
 // CF: Winner of R2_1 vs Winner of R2_2
 const BRACKET_PATHS: Record<string, [string, string]> = {
-  W_R2_1: ["W_R1_1", "W_R1_4"],
-  W_R2_2: ["W_R1_2", "W_R1_3"],
-  E_R2_1: ["E_R1_1", "E_R1_4"],
-  E_R2_2: ["E_R1_2", "E_R1_3"],
+  W_R2_1: ["W_R1_1", "W_R1_2"],
+  W_R2_2: ["W_R1_3", "W_R1_4"],
+  E_R2_1: ["E_R1_1", "E_R1_2"],
+  E_R2_2: ["E_R1_3", "E_R1_4"],
   W_CF: ["W_R2_1", "W_R2_2"],
   E_CF: ["E_R2_1", "E_R2_2"],
   SCF: ["W_CF", "E_CF"],

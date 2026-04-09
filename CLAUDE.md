@@ -56,7 +56,7 @@ lib/
 2. Each round opens for picks when the previous round completes
 3. Users pick winners + predict series length (4–7 games)
 4. Scoring: 1pt correct winner, 3pt bonus for exact games
-5. Fixed bracket: R2 matchups follow bracket position (1v4 winner vs 5v8 winner, etc.) — no reseeding
+5. Division-based fixed bracket: R1 is div 2v3 + div winner vs wild card; R2 pairs within same division side; no reseeding
 6. NHL API (`api-web.nhle.com/v1/standings/now`) provides team data, cached 1hr
 
 ## Database

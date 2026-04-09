@@ -76,8 +76,8 @@ async function main() {
   // Seed teams
   for (const team of allTeams) {
     await client.execute({
-      sql: "INSERT OR REPLACE INTO teams (id, name, abbreviation, seed, conference) VALUES (?, ?, ?, ?, ?)",
-      args: [team.id, team.name, team.abbreviation, team.seed, team.conference],
+      sql: "INSERT OR REPLACE INTO teams (id, name, abbreviation, seed, conference, division) VALUES (?, ?, ?, ?, ?, ?)",
+      args: [team.id, team.name, team.abbreviation, team.seed, team.conference, team.division ?? null],
     });
   }
 
