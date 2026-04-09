@@ -69,12 +69,28 @@ export default async function BracketPage() {
     }
   }
 
-  const [leaderboard, teams, seriesWins, allTeamRows] = await Promise.all([
+  const [leaderboard, apiTeams, seriesWins, allTeamRows] = await Promise.all([
     calculateLeaderboard(league.id),
-    fetchPlayoffTeams(),
+    fetchPlayoffTeams().catch(() => [] as Awaited<ReturnType<typeof fetchPlayoffTeams>>),
     fetchPlayoffSeriesWins(),
-    db.select({ id: teamsTable.id, abbreviation: teamsTable.abbreviation }).from(teamsTable).all(),
+    db.select().from(teamsTable).all(),
   ]);
+
+  // Build teams from DB (stable IDs), enriched with API data (divisionRank, wildcardRank)
+  const apiDataByAbbrev = new Map(apiTeams.map((t) => [t.abbreviation, t]));
+  const teams = allTeamRows.map((row) => {
+    const api = apiDataByAbbrev.get(row.abbreviation);
+    return {
+      id: row.id,
+      name: row.name,
+      abbreviation: row.abbreviation,
+      seed: api?.seed ?? row.seed,
+      conference: row.conference,
+      division: row.division ?? undefined,
+      divisionRank: api?.divisionRank,
+      wildcardRank: api?.wildcardRank,
+    };
+  });
 
   const teamAbbrevById: Record<number, string> = {};
   for (const t of allTeamRows) {
