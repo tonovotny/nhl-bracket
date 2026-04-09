@@ -27,8 +27,8 @@ export function buildRound1Matchups(teams: TeamSeed[]) {
     const confTeams = teams.filter((t) => t.conference === conf);
     const [div1, div2] = CONF_DIVISIONS[conf];
 
-    const div1Teams = confTeams.filter((t) => t.division === div1).sort((a, b) => a.divisionRank! - b.divisionRank!);
-    const div2Teams = confTeams.filter((t) => t.division === div2).sort((a, b) => a.divisionRank! - b.divisionRank!);
+    const div1Teams = confTeams.filter((t) => t.division === div1 && t.divisionRank! > 0).sort((a, b) => a.divisionRank! - b.divisionRank!);
+    const div2Teams = confTeams.filter((t) => t.division === div2 && t.divisionRank! > 0).sort((a, b) => a.divisionRank! - b.divisionRank!);
     const wildCards = confTeams.filter((t) => t.wildcardRank! > 0).sort((a, b) => a.wildcardRank! - b.wildcardRank!);
 
     // Determine which division winner has the better record (lower seed = better)
