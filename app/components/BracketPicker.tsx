@@ -76,7 +76,9 @@ function TeamButton({
         ${disabled ? "cursor-default" : "cursor-pointer"}
       `}
     >
-      <span className="text-xs text-gray-500 w-4">{team.seed}</span>
+      <span className="text-[9px] text-gray-500 w-6 font-mono">{
+        team.wildcardRank ? `WC${team.wildcardRank}` : team.division && team.divisionRank ? `${team.division}${team.divisionRank}` : team.seed
+      }</span>
       <img
         src={`https://assets.nhle.com/logos/nhl/svg/${team.abbreviation}_dark.svg`}
         alt={team.abbreviation}
