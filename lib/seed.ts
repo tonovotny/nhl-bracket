@@ -33,12 +33,12 @@ export const allSlots = [
   { slotId: "E_R1_2", round: 1 },
   { slotId: "E_R1_3", round: 1 },
   { slotId: "E_R1_4", round: 1 },
-  // Round 2 (reseeded)
+  // Round 2 (fixed bracket: R1_1 winner vs R1_4 winner, R1_2 winner vs R1_3 winner)
   { slotId: "W_R2_1", round: 2 },
   { slotId: "W_R2_2", round: 2 },
   { slotId: "E_R2_1", round: 2 },
   { slotId: "E_R2_2", round: 2 },
-  // Conference Finals (reseeded)
+  // Conference Finals (fixed bracket: R2_1 winner vs R2_2 winner)
   { slotId: "W_CF", round: 3 },
   { slotId: "E_CF", round: 3 },
   // Stanley Cup Finals

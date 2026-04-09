@@ -20,19 +20,30 @@ function getTeamById(teams: TeamSeed[], id: number): TeamSeed | undefined {
   return teams.find((t) => t.id === id);
 }
 
-// Reseed: pair highest seed vs lowest seed
-function reseed(teamsList: TeamSeed[]): [TeamSeed, TeamSeed][] {
-  if (teamsList.length < 2) return [];
-  const sorted = [...teamsList].sort((a, b) => a.seed - b.seed);
-  const pairs: [TeamSeed, TeamSeed][] = [];
-  let lo = 0;
-  let hi = sorted.length - 1;
-  while (lo < hi) {
-    pairs.push([sorted[lo], sorted[hi]]);
-    lo++;
-    hi--;
+// Fixed bracket paths: R2 matchups are determined by bracket position, not reseeding
+// R2_1: Winner of R1_1 vs Winner of R1_4
+// R2_2: Winner of R1_2 vs Winner of R1_3
+// CF: Winner of R2_1 vs Winner of R2_2
+const BRACKET_PATHS: Record<string, [string, string]> = {
+  W_R2_1: ["W_R1_1", "W_R1_4"],
+  W_R2_2: ["W_R1_2", "W_R1_3"],
+  E_R2_1: ["E_R1_1", "E_R1_4"],
+  E_R2_2: ["E_R1_2", "E_R1_3"],
+  W_CF: ["W_R2_1", "W_R2_2"],
+  E_CF: ["E_R2_1", "E_R2_2"],
+  SCF: ["W_CF", "E_CF"],
+};
+
+function getWinnerOfSlot(
+  teams: TeamSeed[],
+  slotId: string,
+  seriesMap: Record<string, SeriesInfo>,
+): TeamSeed | null {
+  const s = seriesMap[slotId];
+  if (s?.winnerTeamId) {
+    return getTeamById(teams, s.winnerTeamId) ?? null;
   }
-  return pairs;
+  return null;
 }
 
 // Get the two teams in a slot, using actual series data when available
@@ -54,51 +65,15 @@ export function getTeamsInSlot(
     return [getTeamById(teams, r1.home) ?? null, getTeamById(teams, r1.away) ?? null];
   }
 
-  // Round 2+: derive from actual results of previous round via reseeding
-  if (slotId.includes("_R2_")) {
-    const conference = slotId[0];
-    const slotIndex = parseInt(slotId.slice(-1)) - 1;
-    const r1Winners = getConferenceWinners(teams, conference, 1, seriesMap);
-    if (r1Winners.length < 4) return [null, null];
-    const pairs = reseed(r1Winners);
-    return slotIndex < pairs.length ? [pairs[slotIndex][0], pairs[slotIndex][1]] : [null, null];
-  }
-
-  if (slotId === "W_CF" || slotId === "E_CF") {
-    const conference = slotId[0];
-    const r2Winners = getConferenceWinners(teams, conference, 2, seriesMap);
-    if (r2Winners.length < 2) return [null, null];
-    const sorted = [...r2Winners].sort((a, b) => a.seed - b.seed);
-    return [sorted[0], sorted[1]];
-  }
-
-  if (slotId === "SCF") {
-    const wSeries = seriesMap["W_CF"];
-    const eSeries = seriesMap["E_CF"];
-    return [
-      wSeries?.winnerTeamId ? getTeamById(teams, wSeries.winnerTeamId) ?? null : null,
-      eSeries?.winnerTeamId ? getTeamById(teams, eSeries.winnerTeamId) ?? null : null,
-    ];
+  // Round 2+: follow fixed bracket paths (no reseeding)
+  const feeders = BRACKET_PATHS[slotId];
+  if (feeders) {
+    const team1 = getWinnerOfSlot(teams, feeders[0], seriesMap);
+    const team2 = getWinnerOfSlot(teams, feeders[1], seriesMap);
+    return [team1, team2];
   }
 
   return [null, null];
-}
-
-// Get actual winners from completed series in a round+conference
-function getConferenceWinners(
-  teams: TeamSeed[],
-  conference: string,
-  round: number,
-  seriesMap: Record<string, SeriesInfo>,
-): TeamSeed[] {
-  const winners: TeamSeed[] = [];
-  for (const s of Object.values(seriesMap)) {
-    if (s.round === round && s.slotId.startsWith(conference) && s.status === "complete" && s.winnerTeamId) {
-      const team = getTeamById(teams, s.winnerTeamId);
-      if (team) winners.push(team);
-    }
-  }
-  return winners.sort((a, b) => a.seed - b.seed);
 }
 
 // Determine which round is open for betting
