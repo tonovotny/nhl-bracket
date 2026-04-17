@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   getTeamsInSlot,
   getOpenRound,
@@ -221,7 +221,7 @@ function Matchup({
           {hasPick ? (
             currentPick === s.winnerTeamId ? (
               games[slotId] === s.gamesPlayed ? (
-                <span>✓ Won in {s.gamesPlayed} · <span className="font-bold">+4pts</span></span>
+                <span>✓ Won in {s.gamesPlayed} · <span className="font-bold">+3pts</span></span>
               ) : (
                 <span>✓ Won in {s.gamesPlayed} · +1pt</span>
               )
@@ -297,18 +297,53 @@ function RoundColumn({
   );
 }
 
+function useDaysLeft(lockTime: string | undefined): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lockTime) return;
+
+    function compute() {
+      const now = new Date();
+      const lock = new Date(lockTime!);
+      const diff = lock.getTime() - now.getTime();
+      if (diff <= 0) {
+        setLabel(null);
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      if (days > 1) {
+        setLabel(`${days}d left`);
+      } else if (days === 1) {
+        setLabel(`1d ${hours}h left`);
+      } else {
+        setLabel(`${hours}h left`);
+      }
+    }
+
+    compute();
+    const interval = setInterval(compute, 60_000);
+    return () => clearInterval(interval);
+  }, [lockTime]);
+
+  return label;
+}
+
 export default function BracketPicker({
   teams,
   seriesData,
   initialPicks,
   initialGames,
   onSave,
+  lockTime,
 }: {
   teams: TeamSeed[];
   seriesData: SeriesInfo[];
   initialPicks?: PicksMap;
   initialGames?: GamesMap;
   onSave?: (picks: PicksMap, games: GamesMap, round: number) => void;
+  lockTime?: string;
 }) {
   const [picks, setPicks] = useState<PicksMap>(initialPicks ?? {});
   const [games, setGames] = useState<GamesMap>(initialGames ?? {});
@@ -335,16 +370,22 @@ export default function BracketPicker({
   const roundPicks = openRound > 0 ? countPicksForRound(picks, openRound) : 0;
   const roundTotal = openRound > 0 ? totalSlotsForRound(openRound) : 0;
   const roundComplete = roundPicks === roundTotal;
+  const daysLeft = useDaysLeft(openRound > 0 ? lockTime : undefined);
 
   return (
     <div>
       {/* Status bar */}
       <div className="flex items-center justify-between px-2 py-2 mb-3 text-sm text-gray-400">
         {openRound > 0 ? (
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             <span>
               {ROUND_LABELS[openRound]}: <span className={roundComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{roundPicks}/{roundTotal}</span>
             </span>
+            {daysLeft && (
+              <span className="text-amber-400 text-xs font-medium">
+                {daysLeft}
+              </span>
+            )}
             <span className="text-[10px] text-gray-600 self-center">
               1pt correct winner &middot; 3pt exact result
             </span>

@@ -55,7 +55,7 @@ lib/
 1. Users create or join a league (6-char invite code, e.g. `BEER26`)
 2. Each round opens for picks when the previous round completes
 3. Users pick winners + predict series length (4–7 games)
-4. Scoring: 1pt correct winner, 3pt bonus for exact games
+4. Scoring: 1pt correct winner, 3pts total if winner + exact games (not cumulative). Exact-games points only awarded when winner pick is also correct.
 5. Division-based fixed bracket: R1 is div 2v3 + div winner vs wild card; R2 pairs within same division side; no reseeding
 6. NHL API (`api-web.nhle.com/v1/standings/now`) provides team data, cached 1hr
 

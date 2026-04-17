@@ -119,6 +119,7 @@ export default async function BracketPage() {
       userPicks={userPicks}
       userGames={userGames}
       leaderboard={leaderboard}
+      lockTime={league.lockTime}
     />
   );
 }

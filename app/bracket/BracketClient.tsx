@@ -15,6 +15,7 @@ export default function BracketClient({
   userPicks,
   userGames,
   leaderboard,
+  lockTime,
 }: {
   currentUser: { id: number; name: string };
   members: { userId: number; userName: string }[];
@@ -23,6 +24,7 @@ export default function BracketClient({
   userPicks: PicksMap;
   userGames: GamesMap;
   leaderboard: LeaderboardEntry[];
+  lockTime: string;
 }) {
   const [tab, setTab] = useState<Tab>("bracket");
   const [saving, setSaving] = useState(false);
@@ -125,6 +127,7 @@ export default function BracketClient({
             initialPicks={userPicks}
             initialGames={userGames}
             onSave={handleSave}
+            lockTime={lockTime}
           />
         )}
 
