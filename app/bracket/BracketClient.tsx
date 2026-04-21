@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import BracketPicker from "@/app/components/BracketPicker";
-import type { PicksMap, GamesMap, TeamSeed, SeriesInfo } from "@/lib/bracket-data";
+import type { PicksMap, GamesMap, TeamSeed, SeriesInfo, PlayerPicks } from "@/lib/bracket-data";
 import type { LeaderboardEntry } from "@/lib/scoring";
 
 type Tab = "bracket" | "leaderboard" | "members";
@@ -14,6 +14,7 @@ export default function BracketClient({
   seriesData,
   userPicks,
   userGames,
+  playerPicks,
   leaderboard,
   lockTime,
 }: {
@@ -23,6 +24,7 @@ export default function BracketClient({
   seriesData: SeriesInfo[];
   userPicks: PicksMap;
   userGames: GamesMap;
+  playerPicks: PlayerPicks[];
   leaderboard: LeaderboardEntry[];
   lockTime: string;
 }) {
@@ -126,6 +128,8 @@ export default function BracketClient({
             seriesData={seriesData}
             initialPicks={userPicks}
             initialGames={userGames}
+            playerPicks={playerPicks}
+            currentUserId={currentUser.id}
             onSave={handleSave}
             lockTime={lockTime}
           />

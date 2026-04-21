@@ -3,6 +3,19 @@ import { buildRound1Matchups, allSlots, type TeamSeed } from "./seed";
 export type PicksMap = Record<string, number>; // slotId -> teamId
 export type GamesMap = Record<string, number>; // slotId -> predicted games (4-7)
 
+export type PlayerPicks = {
+  userId: number;
+  userName: string;
+  picks: PicksMap;
+  games: GamesMap;
+};
+
+// Compact display tag for a player name: first word uppercased, 2 chars.
+export function playerAcronym(name: string): string {
+  const first = (name || "").trim().split(/\s+/)[0] ?? "";
+  return first.slice(0, 2).toUpperCase() || "?";
+}
+
 // Series info passed from DB to client
 export type SeriesInfo = {
   slotId: string;

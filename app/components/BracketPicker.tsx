@@ -8,10 +8,12 @@ import {
   countPicksForRound,
   totalSlotsForRound,
   makePick,
+  playerAcronym,
   type PicksMap,
   type GamesMap,
   type TeamSeed,
   type SeriesInfo,
+  type PlayerPicks,
 } from "@/lib/bracket-data";
 
 const FAVORITE_TEAMS: Record<string, string> = {
@@ -148,6 +150,70 @@ function GamesSelector({
   );
 }
 
+// Predicted per-side wins for a player given a slot's home/away team IDs.
+// If the player picked the home team to win in N games, home=4, away=N-4 (and vice versa).
+function predictedWins(
+  pp: PlayerPicks,
+  slotId: string,
+  homeTeamId: number | null | undefined,
+  awayTeamId: number | null | undefined,
+): { home: number | null; away: number | null } {
+  const teamId = pp.picks[slotId];
+  if (teamId == null || homeTeamId == null || awayTeamId == null) return { home: null, away: null };
+  const g = pp.games[slotId];
+  if (teamId === homeTeamId) return { home: 4, away: g != null ? g - 4 : null };
+  if (teamId === awayTeamId) return { home: g != null ? g - 4 : null, away: 4 };
+  return { home: null, away: null };
+}
+
+function PlayerPickColumn({
+  pp,
+  slotId,
+  homeTeamId,
+  awayTeamId,
+  winnerTeamId,
+  gamesPlayed,
+  isMe,
+}: {
+  pp: PlayerPicks;
+  slotId: string;
+  homeTeamId: number | null;
+  awayTeamId: number | null;
+  winnerTeamId: number | null;
+  gamesPlayed: number | null;
+  isMe: boolean;
+}) {
+  const teamId = pp.picks[slotId];
+  const g = pp.games[slotId];
+  const { home, away } = predictedWins(pp, slotId, homeTeamId, awayTeamId);
+  const winnerKnown = winnerTeamId != null;
+  const correct = winnerKnown && teamId === winnerTeamId;
+  const wrong = winnerKnown && teamId != null && teamId !== winnerTeamId;
+  const exact = correct && g != null && gamesPlayed != null && g === gamesPlayed;
+  const bg = exact ? "bg-amber-900/30" : correct ? "bg-emerald-900/20" : wrong ? "bg-red-900/15" : "";
+  const fg = exact ? "text-amber-300" : correct ? "text-emerald-300" : wrong ? "text-red-300" : "text-gray-300";
+
+  return (
+    <div
+      title={pp.userName}
+      className={`flex flex-col border-l border-gray-700 w-7 shrink-0 ${bg}`}
+    >
+      <div className={`h-[18px] flex items-center justify-center text-[9px] font-semibold uppercase tracking-wide truncate px-0.5 ${
+        isMe ? "text-emerald-400" : "text-gray-400"
+      } bg-gray-900/50`}>
+        {playerAcronym(pp.userName)}
+      </div>
+      <div className={`flex-1 flex items-center justify-center text-xs font-mono tabular-nums ${fg}`}>
+        {home ?? <span className="text-gray-600">—</span>}
+      </div>
+      <div className="h-px bg-gray-700" />
+      <div className={`flex-1 flex items-center justify-center text-xs font-mono tabular-nums ${fg}`}>
+        {away ?? <span className="text-gray-600">—</span>}
+      </div>
+    </div>
+  );
+}
+
 function Matchup({
   slotId,
   teams,
@@ -157,6 +223,8 @@ function Matchup({
   onPick,
   onGames,
   canBet,
+  playerPicks,
+  currentUserId,
 }: {
   slotId: string;
   teams: TeamSeed[];
@@ -166,6 +234,8 @@ function Matchup({
   onPick: (slotId: string, teamId: number) => void;
   onGames: (slotId: string, numGames: number) => void;
   canBet: boolean;
+  playerPicks: PlayerPicks[];
+  currentUserId: number;
 }) {
   const [team1, team2] = getTeamsInSlot(teams, slotId, seriesMap);
   const s = seriesMap[slotId];
@@ -178,8 +248,10 @@ function Matchup({
   const pickWrong = isComplete && hasPick && currentPick !== s?.winnerTeamId;
   const exactBonus = pickCorrect && games[slotId] === s?.gamesPlayed;
 
+  const hasPlayerPicks = playerPicks.length > 0;
+
   return (
-    <div className={`bg-gray-800/80 border rounded-lg overflow-hidden my-1.5 min-w-[160px] ${
+    <div className={`bg-gray-800/80 border rounded-lg overflow-hidden my-1.5 ${
       exactBonus ? "border-amber-500/70" : pickCorrect ? "border-emerald-500/60" : pickWrong ? "border-red-500/50" : isComplete ? "border-gray-600" : isActive ? "border-blue-700/50" : "border-gray-700"
     }`}>
       {/* Active series indicator */}
@@ -188,25 +260,42 @@ function Matchup({
           In Progress
         </div>
       )}
-      <TeamButton
-        team={team1}
-        isPicked={canBet && currentPick === team1?.id}
-        isWinner={isComplete && s?.winnerTeamId === team1?.id}
-        wasPicked={isComplete && hasPick && currentPick === team1?.id}
-        wins={showWins ? (s?.homeTeamWins ?? 0) : null}
-        onClick={() => team1 && onPick(slotId, team1.id)}
-        disabled={!canBet || !team1}
-      />
-      <div className="h-px bg-gray-700" />
-      <TeamButton
-        team={team2}
-        isPicked={canBet && currentPick === team2?.id}
-        isWinner={isComplete && s?.winnerTeamId === team2?.id}
-        wasPicked={isComplete && hasPick && currentPick === team2?.id}
-        wins={showWins ? (s?.awayTeamWins ?? 0) : null}
-        onClick={() => team2 && onPick(slotId, team2.id)}
-        disabled={!canBet || !team2}
-      />
+      <div className="flex">
+        <div className="flex-1 min-w-[140px]">
+          {hasPlayerPicks && <div className="h-[18px] bg-gray-900/50" />}
+          <TeamButton
+            team={team1}
+            isPicked={canBet && currentPick === team1?.id}
+            isWinner={isComplete && s?.winnerTeamId === team1?.id}
+            wasPicked={isComplete && hasPick && currentPick === team1?.id}
+            wins={showWins ? (s?.homeTeamWins ?? 0) : null}
+            onClick={() => team1 && onPick(slotId, team1.id)}
+            disabled={!canBet || !team1}
+          />
+          <div className="h-px bg-gray-700" />
+          <TeamButton
+            team={team2}
+            isPicked={canBet && currentPick === team2?.id}
+            isWinner={isComplete && s?.winnerTeamId === team2?.id}
+            wasPicked={isComplete && hasPick && currentPick === team2?.id}
+            wins={showWins ? (s?.awayTeamWins ?? 0) : null}
+            onClick={() => team2 && onPick(slotId, team2.id)}
+            disabled={!canBet || !team2}
+          />
+        </div>
+        {playerPicks.map((pp) => (
+          <PlayerPickColumn
+            key={pp.userId}
+            pp={pp}
+            slotId={slotId}
+            homeTeamId={team1?.id ?? null}
+            awayTeamId={team2?.id ?? null}
+            winnerTeamId={s?.winnerTeamId ?? null}
+            gamesPlayed={s?.gamesPlayed ?? null}
+            isMe={pp.userId === currentUserId}
+          />
+        ))}
+      </div>
       {/* Completed series result with pick indicator */}
       {isComplete && s?.gamesPlayed && (
         <div className={`text-[10px] text-center py-1 ${
@@ -259,6 +348,8 @@ function RoundColumn({
   onPick,
   onGames,
   openRound,
+  playerPicks,
+  currentUserId,
 }: {
   label: string;
   slots: string[];
@@ -269,9 +360,11 @@ function RoundColumn({
   onPick: (slotId: string, teamId: number) => void;
   onGames: (slotId: string, numGames: number) => void;
   openRound: number;
+  playerPicks: PlayerPicks[];
+  currentUserId: number;
 }) {
   return (
-    <div className="flex flex-col justify-around min-w-[175px] px-1">
+    <div className="flex flex-col justify-around min-w-[210px] px-1">
       <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">
         {label}
       </div>
@@ -290,6 +383,8 @@ function RoundColumn({
             onPick={onPick}
             onGames={onGames}
             canBet={canBet}
+            playerPicks={playerPicks}
+            currentUserId={currentUserId}
           />
         );
       })}
@@ -335,6 +430,8 @@ export default function BracketPicker({
   seriesData,
   initialPicks,
   initialGames,
+  playerPicks,
+  currentUserId,
   onSave,
   lockTime,
 }: {
@@ -342,6 +439,8 @@ export default function BracketPicker({
   seriesData: SeriesInfo[];
   initialPicks?: PicksMap;
   initialGames?: GamesMap;
+  playerPicks: PlayerPicks[];
+  currentUserId: number;
   onSave?: (picks: PicksMap, games: GamesMap, round: number) => void;
   lockTime?: string;
 }) {
@@ -373,7 +472,11 @@ export default function BracketPicker({
 
   const roundPicks = openRound > 0 ? countPicksForRound(picks, openRound) : 0;
   const roundTotal = openRound > 0 ? totalSlotsForRound(openRound) : 0;
-  const roundComplete = roundPicks === roundTotal;
+  const roundSlotIds = openRound > 0 ? getSlotsForRound(openRound) : [];
+  const roundGamesPicked = roundSlotIds.filter((s) => games[s] !== undefined).length;
+  const winnersComplete = roundPicks === roundTotal;
+  const gamesComplete = roundGamesPicked === roundTotal;
+  const roundComplete = winnersComplete && gamesComplete;
   const daysLeft = useDaysLeft(openRound > 0 ? lockTime : undefined);
 
   return (
@@ -383,7 +486,11 @@ export default function BracketPicker({
         {openRound > 0 ? (
           <div className="flex gap-4 items-center">
             <span>
-              {ROUND_LABELS[openRound]}: <span className={roundComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{roundPicks}/{roundTotal}</span>
+              {ROUND_LABELS[openRound]}: <span className={winnersComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{roundPicks}/{roundTotal}</span>
+              <span className="text-gray-600"> winners</span>
+              <span className="mx-1 text-gray-700">·</span>
+              <span className={gamesComplete ? "text-emerald-400 font-medium" : "text-gray-300"}>{roundGamesPicked}/{roundTotal}</span>
+              <span className="text-gray-600"> games</span>
             </span>
             {daysLeft && (
               <span className="text-amber-400 text-xs font-medium">
@@ -413,7 +520,11 @@ export default function BracketPicker({
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
           >
-            {roundComplete ? `Submit ${ROUND_LABELS[openRound]}` : `Pick all ${ROUND_LABELS[openRound]} winners`}
+            {roundComplete
+              ? `Submit ${ROUND_LABELS[openRound]}`
+              : !winnersComplete
+                ? `Pick all ${ROUND_LABELS[openRound]} winners`
+                : `Pick games for all ${ROUND_LABELS[openRound]} series`}
           </button>
         )}
       </div>
@@ -422,26 +533,33 @@ export default function BracketPicker({
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-0 min-w-[900px] items-stretch">
           <RoundColumn label="Round 1" slots={["W_R1_1", "W_R1_2", "W_R1_3", "W_R1_4"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
           <RoundColumn label="Round 2" slots={["W_R2_1", "W_R2_2"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
           <RoundColumn label="West Final" slots={["W_CF"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
 
           {/* Stanley Cup Finals */}
-          <div className="flex flex-col items-center justify-center min-w-[180px] px-2">
+          <div className="flex flex-col items-center justify-center min-w-[210px] px-2">
             <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">Stanley Cup</div>
             <div className="text-3xl mb-2">🏆</div>
             <Matchup slotId="SCF" teams={teams} seriesMap={seriesMap} picks={picks} games={games}
-              onPick={handlePick} onGames={handleGames} canBet={openRound === 4} />
+              onPick={handlePick} onGames={handleGames} canBet={openRound === 4}
+              playerPicks={playerPicks} currentUserId={currentUserId} />
           </div>
 
           <RoundColumn label="East Final" slots={["E_CF"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
           <RoundColumn label="Round 2" slots={["E_R2_1", "E_R2_2"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
           <RoundColumn label="Round 1" slots={["E_R1_1", "E_R1_2", "E_R1_3", "E_R1_4"]}
-            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound} />
+            teams={teams} seriesMap={seriesMap} picks={picks} games={games} onPick={handlePick} onGames={handleGames} openRound={openRound}
+            playerPicks={playerPicks} currentUserId={currentUserId} />
         </div>
       </div>
     </div>

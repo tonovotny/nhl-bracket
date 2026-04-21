@@ -1,6 +1,6 @@
 import { db, migrationsRan } from "@/lib/db";
 import { leagues, leagueMembers, users, brackets, picks, series } from "@/lib/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { calculateLeaderboard } from "@/lib/scoring";
@@ -56,20 +56,40 @@ export default async function BracketPage() {
 
   let userPicks: Record<string, number> = {};
   let userGames: Record<string, number> = {};
-  const bracket = await db
-    .select()
-    .from(brackets)
-    .where(and(eq(brackets.userId, currentUser.id), eq(brackets.leagueId, league.id)))
-    .get();
 
-  if (bracket) {
-    const bracketPicks = await db.select().from(picks).where(eq(picks.bracketId, bracket.id)).all();
-    for (const p of bracketPicks) {
-      userPicks[p.slotId] = p.predictedWinnerTeamId;
-      if (p.predictedGames) {
-        userGames[p.slotId] = p.predictedGames;
-      }
+  const leagueBrackets = await db
+    .select({ id: brackets.id, userId: brackets.userId, userName: users.name })
+    .from(brackets)
+    .innerJoin(users, eq(users.id, brackets.userId))
+    .where(eq(brackets.leagueId, league.id))
+    .all();
+
+  const bracketIds = leagueBrackets.map((b) => b.id);
+  const allBracketPicks = bracketIds.length
+    ? await db.select().from(picks).where(inArray(picks.bracketId, bracketIds)).all()
+    : [];
+
+  const picksByBracket = new Map<number, typeof allBracketPicks>();
+  for (const p of allBracketPicks) {
+    const list = picksByBracket.get(p.bracketId) ?? [];
+    list.push(p);
+    picksByBracket.set(p.bracketId, list);
+  }
+
+  const playerPicks = leagueBrackets.map((b) => {
+    const ps: Record<string, number> = {};
+    const gs: Record<string, number> = {};
+    for (const p of picksByBracket.get(b.id) ?? []) {
+      ps[p.slotId] = p.predictedWinnerTeamId;
+      if (p.predictedGames) gs[p.slotId] = p.predictedGames;
     }
+    return { userId: b.userId, userName: b.userName, picks: ps, games: gs };
+  });
+
+  const mine = playerPicks.find((p) => p.userId === currentUser.id);
+  if (mine) {
+    userPicks = mine.picks;
+    userGames = mine.games;
   }
 
   const [leaderboard, apiTeams, allTeamRows] = await Promise.all([
@@ -102,6 +122,7 @@ export default async function BracketPage() {
       seriesData={seriesData}
       userPicks={userPicks}
       userGames={userGames}
+      playerPicks={playerPicks}
       leaderboard={leaderboard}
       lockTime={league.lockTime}
     />
