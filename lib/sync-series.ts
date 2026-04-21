@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { series, teams } from "./schema";
 import { eq } from "drizzle-orm";
-import { fetchPlayoffSeriesWins } from "./nhl-api";
+import { fetchPlayoffSeriesWins, type SeriesWinsMap } from "./nhl-api";
 
 // R2+ slots inherit teams from these feeder slots (home = first, away = second)
 const BRACKET_PATHS: Record<string, [string, string]> = {
@@ -21,7 +21,7 @@ type SeriesRow = typeof series.$inferSelect;
 // downstream slots (homeTeamId/awayTeamId) as feeders complete.
 export async function syncSeriesResults() {
   const [winsMap, teamRows, allSeries] = await Promise.all([
-    fetchPlayoffSeriesWins().catch(() => ({})),
+    fetchPlayoffSeriesWins().catch((): SeriesWinsMap => ({})),
     db.select().from(teams).all(),
     db.select().from(series).all(),
   ]);
