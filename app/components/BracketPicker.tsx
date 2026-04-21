@@ -47,8 +47,8 @@ function TeamButton({
 }) {
   if (!team) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-gray-800/50 border-l-3 border-transparent">
-        <span className="text-xs text-gray-700 w-4">-</span>
+      <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-600 bg-gray-800/50 border-l-2 border-transparent">
+        <span className="text-[9px] text-gray-700 w-5">-</span>
         <span className="text-gray-600 italic">TBD</span>
       </div>
     );
@@ -63,34 +63,34 @@ function TeamButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 px-3 py-2 text-sm w-full transition-colors text-left
+      className={`flex items-center gap-1.5 px-2 py-1 text-xs w-full transition-colors text-left
         ${correctPick
-          ? "bg-emerald-900/50 border-l-3 border-emerald-400"
+          ? "bg-emerald-900/50 border-l-2 border-emerald-400"
           : wrongPick
-            ? "bg-red-900/30 border-l-3 border-red-400"
+            ? "bg-red-900/30 border-l-2 border-red-400"
             : isWinner
-              ? "bg-emerald-900/30 border-l-3 border-emerald-400/50"
+              ? "bg-emerald-900/30 border-l-2 border-emerald-400/50"
               : isPicked
-                ? "bg-emerald-900/40 border-l-3 border-emerald-500"
-                : "border-l-3 border-transparent hover:bg-gray-700/50"
+                ? "bg-emerald-900/40 border-l-2 border-emerald-500"
+                : "border-l-2 border-transparent hover:bg-gray-700/50"
         }
         ${favOwner ? "ring-1 ring-inset ring-yellow-500/40 bg-yellow-900/10" : ""}
         ${disabled ? "cursor-default" : "cursor-pointer"}
       `}
     >
-      <span className="text-[9px] text-gray-500 w-6 font-mono">{
+      <span className="text-[9px] text-gray-500 w-5 font-mono shrink-0">{
         team.wildcardRank ? `WC${team.wildcardRank}` : team.division && team.divisionRank ? `${team.division}${team.divisionRank}` : team.seed
       }</span>
       <img
         src={`https://assets.nhle.com/logos/nhl/svg/${team.abbreviation}_dark.svg`}
         alt={team.abbreviation}
-        className="w-5 h-5 shrink-0"
+        className="w-4 h-4 shrink-0"
       />
-      <span className={`truncate ${
+      <span className={`truncate font-medium ${
         correctPick ? "font-semibold text-emerald-300" : wrongPick ? "text-red-300 line-through" : isWinner ? "font-semibold text-emerald-300" : ""
       }`}>{team.abbreviation}</span>
       {favOwner && (
-        <span className="text-[9px] text-yellow-400/70 uppercase tracking-wide">{favOwner}</span>
+        <span className="text-[8px] text-yellow-400/70 uppercase tracking-wide">{favOwner}</span>
       )}
       {wins !== null && (
         <span className={`ml-auto text-xs font-bold tabular-nums ${
@@ -261,7 +261,7 @@ function Matchup({
         </div>
       )}
       <div className="flex">
-        <div className="flex-1 min-w-[140px]">
+        <div className="flex-1 min-w-[95px]">
           {hasPlayerPicks && <div className="h-[18px] bg-gray-900/50" />}
           <TeamButton
             team={team1}
@@ -364,7 +364,7 @@ function RoundColumn({
   currentUserId: number;
 }) {
   return (
-    <div className="flex flex-col justify-around min-w-[210px] px-1">
+    <div className="flex flex-col justify-around min-w-[165px] px-1">
       <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">
         {label}
       </div>
@@ -543,7 +543,7 @@ export default function BracketPicker({
             playerPicks={playerPicks} currentUserId={currentUserId} />
 
           {/* Stanley Cup Finals */}
-          <div className="flex flex-col items-center justify-center min-w-[210px] px-2">
+          <div className="flex flex-col items-center justify-center min-w-[165px] px-2">
             <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">Stanley Cup</div>
             <div className="text-3xl mb-2">🏆</div>
             <Matchup slotId="SCF" teams={teams} seriesMap={seriesMap} picks={picks} games={games}
