@@ -354,6 +354,10 @@ export default function BracketPicker({
   }
 
   const openRound = getOpenRound(seriesMap);
+  const activeRound = openRound === 0
+    ? [1, 2, 3, 4].find((r) => seriesData.some((s) => s.round === r && s.status === "active"))
+    : undefined;
+  const completedAll = openRound === 0 && !activeRound && seriesData.length > 0 && seriesData.every((s) => s.status === "complete");
 
   const handlePick = useCallback((slotId: string, teamId: number) => {
     setPicks((prevPicks) => {
@@ -390,6 +394,12 @@ export default function BracketPicker({
               1pt correct winner &middot; 3pt exact result
             </span>
           </div>
+        ) : activeRound ? (
+          <span className="text-gray-500">
+            🔒 {ROUND_LABELS[activeRound]} locked — series in progress
+          </span>
+        ) : completedAll ? (
+          <span className="text-gray-500">Playoffs complete</span>
         ) : (
           <span className="text-gray-500">No round open for betting right now</span>
         )}

@@ -42,7 +42,13 @@ export async function POST(request: Request) {
   const roundSeries = await db.select().from(series).where(eq(series.round, round)).all();
   const allPending = roundSeries.every((s) => s.status === "pending");
   if (!allPending) {
-    return NextResponse.json({ error: "This round is locked" }, { status: 403 });
+    return NextResponse.json({ error: "This round is locked — already in progress" }, { status: 403 });
+  }
+
+  // Round 1 also honors the league lock time — once past, no more submissions
+  // even if the NHL API hasn't yet reported a game result.
+  if (round === 1 && Date.now() >= new Date(league.lockTime).getTime()) {
+    return NextResponse.json({ error: "Round 1 lock time has passed" }, { status: 403 });
   }
 
   let bracket = await db
