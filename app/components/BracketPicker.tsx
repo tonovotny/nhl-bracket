@@ -364,30 +364,32 @@ function RoundColumn({
   currentUserId: number;
 }) {
   return (
-    <div className="flex flex-col justify-around min-w-[165px] px-1">
+    <div className="flex flex-col min-w-[165px] px-1">
       <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">
         {label}
       </div>
-      {slots.map((slotId) => {
-        const s = seriesMap[slotId];
-        const round = s?.round ?? 0;
-        const canBet = round === openRound;
-        return (
-          <Matchup
-            key={slotId}
-            slotId={slotId}
-            teams={teams}
-            seriesMap={seriesMap}
-            picks={picks}
-            games={games}
-            onPick={onPick}
-            onGames={onGames}
-            canBet={canBet}
-            playerPicks={playerPicks}
-            currentUserId={currentUserId}
-          />
-        );
-      })}
+      <div className="flex-1 flex flex-col justify-around">
+        {slots.map((slotId) => {
+          const s = seriesMap[slotId];
+          const round = s?.round ?? 0;
+          const canBet = round === openRound;
+          return (
+            <Matchup
+              key={slotId}
+              slotId={slotId}
+              teams={teams}
+              seriesMap={seriesMap}
+              picks={picks}
+              games={games}
+              onPick={onPick}
+              onGames={onGames}
+              canBet={canBet}
+              playerPicks={playerPicks}
+              currentUserId={currentUserId}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -543,12 +545,16 @@ export default function BracketPicker({
             playerPicks={playerPicks} currentUserId={currentUserId} />
 
           {/* Stanley Cup Finals */}
-          <div className="flex flex-col items-center justify-center min-w-[165px] px-2">
+          <div className="flex flex-col min-w-[165px] px-2">
             <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">Stanley Cup</div>
-            <div className="text-3xl mb-2">🏆</div>
-            <Matchup slotId="SCF" teams={teams} seriesMap={seriesMap} picks={picks} games={games}
-              onPick={handlePick} onGames={handleGames} canBet={openRound === 4}
-              playerPicks={playerPicks} currentUserId={currentUserId} />
+            <div className="flex-1 flex flex-col items-center justify-around">
+              <div className="flex flex-col items-center">
+                <div className="text-3xl mb-2">🏆</div>
+                <Matchup slotId="SCF" teams={teams} seriesMap={seriesMap} picks={picks} games={games}
+                  onPick={handlePick} onGames={handleGames} canBet={openRound === 4}
+                  playerPicks={playerPicks} currentUserId={currentUserId} />
+              </div>
+            </div>
           </div>
 
           <RoundColumn label="East Final" slots={["E_CF"]}
