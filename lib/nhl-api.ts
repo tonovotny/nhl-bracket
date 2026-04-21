@@ -21,8 +21,8 @@ type NHLPlayoffSeries = {
   topSeedWins: number;
   bottomSeedWins: number;
   winningTeamId?: number;
-  topSeedTeam: { abbrev: string };
-  bottomSeedTeam: { abbrev: string };
+  topSeedTeam?: { abbrev: string };
+  bottomSeedTeam?: { abbrev: string };
 };
 
 type NHLPlayoffResponse = {
@@ -33,7 +33,7 @@ type NHLPlayoffResponse = {
 export type SeriesWinsMap = Record<string, { [abbrev: string]: number }>;
 
 export async function fetchPlayoffSeriesWins(): Promise<SeriesWinsMap> {
-  const res = await fetch("https://api-web.nhle.com/v1/playoff-bracket/2025", {
+  const res = await fetch("https://api-web.nhle.com/v1/playoff-bracket/2026", {
     next: { revalidate: 300 }, // cache for 5 minutes
   });
 
@@ -43,8 +43,9 @@ export async function fetchPlayoffSeriesWins(): Promise<SeriesWinsMap> {
   const result: SeriesWinsMap = {};
 
   for (const s of data.series) {
-    const topAbbrev = s.topSeedTeam.abbrev;
-    const botAbbrev = s.bottomSeedTeam.abbrev;
+    const topAbbrev = s.topSeedTeam?.abbrev;
+    const botAbbrev = s.bottomSeedTeam?.abbrev;
+    if (!topAbbrev || !botAbbrev) continue;
     const key = [topAbbrev, botAbbrev].sort().join("-");
     result[key] = {
       [topAbbrev]: s.topSeedWins,

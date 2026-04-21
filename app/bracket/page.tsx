@@ -4,7 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { calculateLeaderboard } from "@/lib/scoring";
-import { fetchPlayoffTeams, fetchPlayoffSeriesWins } from "@/lib/nhl-api";
+import { fetchPlayoffTeams } from "@/lib/nhl-api";
+import { syncSeriesResults } from "@/lib/sync-series";
 import { teams as teamsTable } from "@/lib/schema";
 import type { SeriesInfo } from "@/lib/bracket-data";
 import BracketClient from "./BracketClient";
@@ -38,6 +39,8 @@ export default async function BracketPage() {
     .where(eq(leagueMembers.leagueId, league.id))
     .all();
 
+  await syncSeriesResults().catch(() => {});
+
   const allSeries = await db.select().from(series).all();
   const seriesData: SeriesInfo[] = allSeries.map((s) => ({
     slotId: s.slotId,
@@ -69,10 +72,9 @@ export default async function BracketPage() {
     }
   }
 
-  const [leaderboard, apiTeams, seriesWins, allTeamRows] = await Promise.all([
+  const [leaderboard, apiTeams, allTeamRows] = await Promise.all([
     calculateLeaderboard(league.id),
     fetchPlayoffTeams().catch(() => [] as Awaited<ReturnType<typeof fetchPlayoffTeams>>),
-    fetchPlayoffSeriesWins(),
     db.select().from(teamsTable).all(),
   ]);
 
@@ -91,24 +93,6 @@ export default async function BracketPage() {
       wildcardRank: api?.wildcardRank,
     };
   });
-
-  const teamAbbrevById: Record<number, string> = {};
-  for (const t of allTeamRows) {
-    teamAbbrevById[t.id] = t.abbreviation;
-  }
-
-  for (const s of seriesData) {
-    if (!s.homeTeamId || !s.awayTeamId) continue;
-    const homeAbbrev = teamAbbrevById[s.homeTeamId];
-    const awayAbbrev = teamAbbrevById[s.awayTeamId];
-    if (!homeAbbrev || !awayAbbrev) continue;
-    const key = [homeAbbrev, awayAbbrev].sort().join("-");
-    const wins = seriesWins[key];
-    if (wins) {
-      s.homeTeamWins = wins[homeAbbrev] ?? 0;
-      s.awayTeamWins = wins[awayAbbrev] ?? 0;
-    }
-  }
 
   return (
     <BracketClient
