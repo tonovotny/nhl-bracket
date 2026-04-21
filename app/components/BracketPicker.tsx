@@ -261,7 +261,7 @@ function Matchup({
         </div>
       )}
       <div className="flex">
-        <div className="flex-1 min-w-[95px]">
+        <div className="flex-1 min-w-[110px]">
           {hasPlayerPicks && <div className="h-[18px] bg-gray-900/50" />}
           <TeamButton
             team={team1}
@@ -364,7 +364,7 @@ function RoundColumn({
   currentUserId: number;
 }) {
   return (
-    <div className="flex flex-col min-w-[165px] px-1">
+    <div className="flex flex-col min-w-[180px] px-1">
       <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">
         {label}
       </div>
@@ -545,7 +545,7 @@ export default function BracketPicker({
             playerPicks={playerPicks} currentUserId={currentUserId} />
 
           {/* Stanley Cup Finals */}
-          <div className="flex flex-col min-w-[165px] px-2">
+          <div className="flex flex-col min-w-[180px] px-2">
             <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest mb-2 font-medium">Stanley Cup</div>
             <div className="flex-1 flex flex-col items-center justify-around">
               <div className="flex flex-col items-center">
