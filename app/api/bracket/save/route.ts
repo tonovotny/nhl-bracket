@@ -9,10 +9,11 @@ const DEFAULT_LEAGUE_CODE = "NHL2026";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { picksData, gamesData, round } = body as {
+  const { picksData, gamesData, round, unlocked } = body as {
     picksData: Record<string, number>;
     gamesData?: Record<string, number>;
     round: number;
+    unlocked?: boolean;
   };
 
   await migrationsRan;
@@ -39,10 +40,13 @@ export async function POST(request: Request) {
   }
 
   // Validate round is open: all series in this round must be "pending"
-  const roundSeries = await db.select().from(series).where(eq(series.round, round)).all();
-  const allPending = roundSeries.every((s) => s.status === "pending");
-  if (!allPending) {
-    return NextResponse.json({ error: "This round is locked — already in progress" }, { status: 403 });
+  // (unless the unlock override is set — used by /bracket/unlock for late picks)
+  if (!unlocked) {
+    const roundSeries = await db.select().from(series).where(eq(series.round, round)).all();
+    const allPending = roundSeries.every((s) => s.status === "pending");
+    if (!allPending) {
+      return NextResponse.json({ error: "This round is locked — already in progress" }, { status: 403 });
+    }
   }
 
   // Round 1 also honors the league lock time — once past, no more submissions

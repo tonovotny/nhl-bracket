@@ -17,6 +17,7 @@ export default function BracketClient({
   playerPicks,
   leaderboard,
   lockTime,
+  unlocked,
 }: {
   currentUser: { id: number; name: string };
   members: { userId: number; userName: string }[];
@@ -27,6 +28,7 @@ export default function BracketClient({
   playerPicks: PlayerPicks[];
   leaderboard: LeaderboardEntry[];
   lockTime: string;
+  unlocked?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("bracket");
   const [saving, setSaving] = useState(false);
@@ -44,6 +46,7 @@ export default function BracketClient({
           picksData: picks,
           gamesData: games,
           round,
+          unlocked: unlocked === true,
         }),
       });
 
@@ -132,6 +135,7 @@ export default function BracketClient({
             currentUserId={currentUser.id}
             onSave={handleSave}
             lockTime={lockTime}
+            unlocked={unlocked}
           />
         )}
 

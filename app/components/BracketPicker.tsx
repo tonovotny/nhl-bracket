@@ -436,6 +436,7 @@ export default function BracketPicker({
   currentUserId,
   onSave,
   lockTime,
+  unlocked,
 }: {
   teams: TeamSeed[];
   seriesData: SeriesInfo[];
@@ -445,6 +446,7 @@ export default function BracketPicker({
   currentUserId: number;
   onSave?: (picks: PicksMap, games: GamesMap, round: number) => void;
   lockTime?: string;
+  unlocked?: boolean;
 }) {
   const [picks, setPicks] = useState<PicksMap>(initialPicks ?? {});
   const [games, setGames] = useState<GamesMap>(initialGames ?? {});
@@ -454,11 +456,13 @@ export default function BracketPicker({
     seriesMap[s.slotId] = s;
   }
 
-  const openRound = getOpenRound(seriesMap);
-  const activeRound = openRound === 0
+  const baseOpenRound = getOpenRound(seriesMap);
+  const activeRound = baseOpenRound === 0
     ? [1, 2, 3, 4].find((r) => seriesData.some((s) => s.round === r && s.status === "active"))
     : undefined;
-  const completedAll = openRound === 0 && !activeRound && seriesData.length > 0 && seriesData.every((s) => s.status === "complete");
+  const completedAll = baseOpenRound === 0 && !activeRound && seriesData.length > 0 && seriesData.every((s) => s.status === "complete");
+  const openRound = unlocked && baseOpenRound === 0 && activeRound ? activeRound : baseOpenRound;
+  const unlockOverride = unlocked === true && baseOpenRound === 0 && activeRound !== undefined;
 
   const handlePick = useCallback((slotId: string, teamId: number) => {
     setPicks((prevPicks) => {
@@ -497,6 +501,11 @@ export default function BracketPicker({
             {daysLeft && (
               <span className="text-amber-400 text-xs font-medium">
                 {daysLeft}
+              </span>
+            )}
+            {unlockOverride && (
+              <span className="text-fuchsia-400 text-xs font-medium">
+                🔓 unlocked
               </span>
             )}
             <span className="text-[10px] text-gray-600 self-center">
