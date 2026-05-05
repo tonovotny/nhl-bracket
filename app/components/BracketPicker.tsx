@@ -89,9 +89,6 @@ function TeamButton({
       <span className={`truncate font-medium ${
         correctPick ? "font-semibold text-emerald-300" : wrongPick ? "text-red-300 line-through" : isWinner ? "font-semibold text-emerald-300" : ""
       }`}>{team.abbreviation}</span>
-      {favOwner && (
-        <span className="text-[10px] text-yellow-400/80 leading-none" title={favOwner}>★</span>
-      )}
       {wins !== null && (
         <span className={`ml-auto text-xs font-bold tabular-nums ${
           isWinner ? "text-emerald-400" : wins > 0 ? "text-gray-300" : "text-gray-600"
