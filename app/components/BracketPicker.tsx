@@ -90,7 +90,7 @@ function TeamButton({
         correctPick ? "font-semibold text-emerald-300" : wrongPick ? "text-red-300 line-through" : isWinner ? "font-semibold text-emerald-300" : ""
       }`}>{team.abbreviation}</span>
       {favOwner && (
-        <span className="text-[8px] text-yellow-400/70 uppercase tracking-wide">{favOwner}</span>
+        <span className="text-[10px] text-yellow-400/80 leading-none" title={favOwner}>★</span>
       )}
       {wins !== null && (
         <span className={`ml-auto text-xs font-bold tabular-nums ${
